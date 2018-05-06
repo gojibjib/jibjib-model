@@ -83,11 +83,8 @@ FLAGS = flags.FLAGS
 _NUM_CLASSES = 5
 
 def random_frame(spectogram, seconds):
-    #picks a random 5 second frame from spectogram array
+    #picks a random few second frame from spectogram array
     x,y,z = spectogram.shape
-    #print(x)
-    #print(y)
-    #print(z)
     random_nr = np.random.random_integers(0,x-seconds)
     return spectogram[random_nr:(random_nr+seconds),0:y,0:z]
 
@@ -157,7 +154,6 @@ def _get_examples_batch():
   import numpy as np
 
   #setting directory for scanning files
-  #rootDir = "/Users/Sebastian/Documents/own_projects/animal_voices/models/research/audioset/wav_files/"
   rootDir = "./wav_files/"
   
   #find out how many classes
