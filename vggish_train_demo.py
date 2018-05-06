@@ -64,7 +64,7 @@ flags = tf.app.flags
 slim = tf.contrib.slim
 
 flags.DEFINE_integer(
-    'num_batches', 100,
+    'num_batches', 10,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
@@ -75,7 +75,7 @@ flags.DEFINE_boolean(
     'VGGish as a fixed feature extractor.')
 
 flags.DEFINE_string(
-    'checkpoint', 'vggish_model.ckpt',
+    'checkpoint', './tmp/model.ckpt',
     'Path to the VGGish checkpoint file.')
 
 FLAGS = flags.FLAGS
@@ -155,10 +155,10 @@ def _get_examples_batch():
 
   import os 
   import numpy as np
-  import contextlib
 
   #setting directory for scanning files
-  rootDir = "/Users/Sebastian/Documents/own_projects/animal_voices/models/research/audioset/wav_files/"
+  #rootDir = "/Users/Sebastian/Documents/own_projects/animal_voices/models/research/audioset/wav_files/"
+  rootDir = "./wav_files/"
   
   #find out how many classes
   nr_classes = 0
@@ -206,6 +206,8 @@ def _get_examples_batch():
   return (features, labels)
   
 def main(_):
+
+
   with tf.Graph().as_default(), tf.Session() as sess:
     # Define VGGish.
     embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
@@ -260,7 +262,9 @@ def main(_):
         'mymodel/train/global_step:0')
     loss_tensor = sess.graph.get_tensor_by_name('mymodel/train/loss_op:0')
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
-
+    #init saver
+    saver = tf.train.Saver()
+    
     # The training loop.
     for _ in range(FLAGS.num_batches):
       (features, labels) = _get_examples_batch()
@@ -269,7 +273,8 @@ def main(_):
           feed_dict={features_tensor: features, labels_tensor: labels})
       print('Step %d: loss %g' % (num_steps, loss))
 
-    #saving model + checkpoint 
+    #Save the variables to disk.
+    save_path = saver.save(sess, "./tmp/model.ckpt")
 
 
 if __name__ == '__main__':
