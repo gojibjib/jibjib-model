@@ -46,7 +46,9 @@ Usage:
 from __future__ import print_function
 
 from random import shuffle
-
+import matplotlib  
+matplotlib.use('TkAgg')   
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import os 
@@ -64,7 +66,7 @@ flags = tf.app.flags
 slim = tf.contrib.slim
 
 flags.DEFINE_integer(
-    'num_batches', 10,
+    'num_batches', 23,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
@@ -75,11 +77,12 @@ flags.DEFINE_boolean(
     'VGGish as a fixed feature extractor.')
 
 flags.DEFINE_string(
-    'checkpoint', './tmp/model.ckpt',
+    'checkpoint', 'vggish_model.ckpt',
     'Path to the VGGish checkpoint file.')
 
 FLAGS = flags.FLAGS
 
+#needs fix
 _NUM_CLASSES = 5
 
 def random_frame(spectogram, seconds):
@@ -88,11 +91,64 @@ def random_frame(spectogram, seconds):
     random_nr = np.random.random_integers(0,x-seconds)
     return spectogram[random_nr:(random_nr+seconds),0:y,0:z]
 
-def get_one_hot(targets, nb_classes):
-  return np.eye(nb_classes)[np.array(targets).reshape(-1)]
+def get_one_hot(target, nb_classes):
+  return np.eye(nb_classes)[np.array(target).reshape(-1)]
 
+#load spectrograms into list
+def load_spectrogram():
+  import os 
+  import numpy as np
+
+  #setting directory for scanning files
+  rootDir = "./wav_files/"
+  
+  #find out how many classes
+  nr_classes = 0
+  for dirName in os.walk(rootDir):
+    nr_classes +=1
+  counter = 0
+  input_examples =[]
+  input_labels = []
+  
+  #5 seconds frame each
+  spectrogram_list = []
+  label_list =[] 
+  num_seconds = 5 
+  for dirName,subdirList, fileList in os.walk(rootDir):
+    for fname in fileList:
+        path = dirName+"/"+fname
+        #calling vggish function, reads in wav file and returns mel spectrogram
+        signal_example = vggish_input.wavfile_to_examples(path)
+        encoded = (get_one_hot(counter-1,nr_classes))/num_seconds
+        signal_label = np.array(encoded *signal_example.shape[0])
+        input_examples.append(signal_example)
+        input_labels.append(signal_label)
+    counter +=1
+  return input_examples, input_labels
+
+def get_random_batches(full_examples,input_labels):
+  num_seconds = 5
+  input_examples=[]
+  for element in full_examples:
+    #gets just the 5 second sequence for each example 
+    signal_example= random_frame(element,num_seconds)
+    input_examples.append(signal_example)
+
+  all_examples = np.concatenate([x for x in input_examples ])
+  all_labels = np.concatenate([x for x in input_labels])
+  labeled_examples = list(zip(all_examples,all_labels))
+  shuffle(labeled_examples)
+  # Separate and return the features and labels.
+  features = [example for (example, _) in labeled_examples]
+  labels = [label for (_, label) in labeled_examples]
+  
+  return (features, labels)
+
+  
 def _get_examples_batch():
-  """Returns a shuffled batch of examples of all audio classes.
+  
+  """
+  Returns a shuffled batch of examples of all audio classes.
 
   Note that this is just a toy function because this is a simple demo intended
   to illustrate how the training code might work.
@@ -106,48 +162,7 @@ def _get_examples_batch():
     provides the labels for corresponding rows in features.
   """
   
-  """
-  # Make a waveform for each class.
-  num_seconds = 5
-  sr = 44100  # Sampling rate.
-  t = np.linspace(0, num_seconds, int(num_seconds * sr))  # Time axis.
-
-  print("printing t...")
-  print(t.shape)
-  # Random sine wave.
-  freq = np.random.uniform(100, 1000)
-  sine = np.sin(2 * np.pi * freq * t)
-  # Random constant signal.
-  magnitude = np.random.uniform(-1, 1)
-  const = magnitude * t
-  # White noise.
-  noise = np.random.normal(-1, 1, size=t.shape)
-
-  # Make examples of each signal and corresponding labels.
-  # Sine is class index 0, Const class index 1, Noise class index 2.
-  sine_examples = vggish_input.waveform_to_examples(sine, sr)
-  sine_labels = np.array([[1, 0, 0]] * sine_examples.shape[0])
-  const_examples = vggish_input.waveform_to_examples(const, sr)
-  const_labels = np.array([[0, 1, 0]] * const_examples.shape[0])
-  noise_examples = vggish_input.waveform_to_examples(noise, sr)
-  noise_labels = np.array([[0, 0, 1]] * noise_examples.shape[0])
-
-  # Shuffle (example, label) pairs across all classes.
-  all_examples = np.concatenate((sine_examples, const_examples, noise_examples))
-  print("concat all examples...")
-  print(all_examples)
-  all_labels = np.concatenate((sine_labels, const_labels, noise_labels))
-  print("concat all labels")
-  print(all_labels)
-  labeled_examples = list(zip(all_examples, all_labels))
-  shuffle(labeled_examples)
-
-  # Separate and return the features and labels.
-  features = [example for (example, _) in labeled_examples]
-  labels = [label for (_, label) in labeled_examples]
-  print(labels)
-  return (features, labels)
-  """
+  
   #my code starting here ...
 
   import os 
@@ -164,25 +179,20 @@ def _get_examples_batch():
   counter = 0
   input_examples =[]
   input_labels = []
+  
   #3 seconds frame each
-  num_seconds=4 
+  num_seconds=5 
   for dirName,subdirList, fileList in os.walk(rootDir):
-    #print('Found directory: %s' % dirName)
     for fname in fileList:
         path = dirName+"/"+fname
 
         #calling vggish function, reads in wav file and returns mel spectrogram
         signal_example = vggish_input.wavfile_to_examples(path)
-
         #takes out random sequence from entire spectrogram (for instance 4 frames = 4 seconds of audio)
         signal_example= random_frame(signal_example,num_seconds)
-        
-        #gets a label for the sequence
-        encoded = get_one_hot(counter,nr_classes)
-
+        encoded = (get_one_hot(counter-1,nr_classes))/nr_classes
         #sequence gets labeled
         signal_label = np.array(encoded *signal_example.shape[0])
-
         input_examples.append(signal_example)
         input_labels.append(signal_label)  
     counter +=1
@@ -201,8 +211,8 @@ def _get_examples_batch():
 
   return (features, labels)
   
-def main(_):
 
+def main(_):
 
   with tf.Graph().as_default(), tf.Session() as sess:
     # Define VGGish.
@@ -260,18 +270,26 @@ def main(_):
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
     #init saver
     saver = tf.train.Saver()
+
+    #loads all input with corresponding label
+    all_examples, all_labels =load_spectrogram()
     
     # The training loop.
     for _ in range(FLAGS.num_batches):
-      (features, labels) = _get_examples_batch()
+      #nested for loop for smaller batches?
+      #(features, labels) = _get_examples_batch()
+      (features, labels) = get_random_batches(all_examples,all_labels)
+      #print(features.shape())
       [num_steps, loss, _] = sess.run(
           [global_step_tensor, loss_tensor, train_op],
           feed_dict={features_tensor: features, labels_tensor: labels})
       print('Step %d: loss %g' % (num_steps, loss))
-
+    
+    saver = tf.train.Saver()
     #Save the variables to disk.
-    save_path = saver.save(sess, "./tmp/model.ckpt")
-
+    saver.save(sess, "./temp/my_test_model.ckpt",global_step=23)
+    #print("Model saved in path: %s" % save_path)
 
 if __name__ == '__main__':
   tf.app.run()
+  
