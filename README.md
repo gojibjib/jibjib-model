@@ -2,4 +2,4 @@ Vggish_train_demo.py itereates through directories containing .wav-files, gets t
 
 
 
-Deploy_model.py restores the pretrained TensorFlow model, consumes a .waf file and generates a semantically meaningful, high-level 128-D embeddinga. The embeddings are tfrecord files that can be fed into a downstream classification model later on.
+Deploy_model.py restores the pretrained TensorFlow model, consumes a .waf file and generates a semantically meaningful, high-level 128-D embedding. The embeddings are tfrecord files that can be fed into a downstream classification model later on.
