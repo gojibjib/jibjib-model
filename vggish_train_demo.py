@@ -66,7 +66,7 @@ flags = tf.app.flags
 slim = tf.contrib.slim
 
 flags.DEFINE_integer(
-    'num_batches', 23,
+    'num_batches', 100,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
@@ -83,7 +83,7 @@ flags.DEFINE_string(
 FLAGS = flags.FLAGS
 
 #needs fix
-_NUM_CLASSES = 5
+_NUM_CLASSES = 6
 
 def random_frame(spectogram, seconds):
     #picks a random few second frame from spectogram array
@@ -102,10 +102,6 @@ def load_spectrogram():
   #setting directory for scanning files
   rootDir = "./wav_files/"
   
-  #find out how many classes
-  nr_classes = 0
-  for dirName in os.walk(rootDir):
-    nr_classes +=1
   counter = 0
   input_examples =[]
   input_labels = []
@@ -113,26 +109,31 @@ def load_spectrogram():
   #5 seconds frame each
   spectrogram_list = []
   label_list =[] 
-  num_seconds = 5 
+  num_seconds = 1 
   for dirName,subdirList, fileList in os.walk(rootDir):
     for fname in fileList:
         path = dirName+"/"+fname
+        #print(path)
         #calling vggish function, reads in wav file and returns mel spectrogram
         signal_example = vggish_input.wavfile_to_examples(path)
-        encoded = (get_one_hot(counter-1,nr_classes))/num_seconds
-        signal_label = np.array(encoded *signal_example.shape[0])
+        encoded = (get_one_hot(counter-1,_NUM_CLASSES))
+        #print(signal_example.shape[0])
+        #signal_label = np.array(encoded *signal_example.shape[0])
+        signal_label =np.array(encoded)
+        print(encoded)
         input_examples.append(signal_example)
         input_labels.append(signal_label)
     counter +=1
   return input_examples, input_labels
 
 def get_random_batches(full_examples,input_labels):
-  num_seconds = 5
+  num_seconds = 4
   input_examples=[]
   for element in full_examples:
     #gets just the 5 second sequence for each example 
-    signal_example= random_frame(element,num_seconds)
-    input_examples.append(signal_example)
+    #signal_example= random_frame(element,num_seconds)
+    #input_examples.append(signal_example)
+    input_examples.append(element)
 
   all_examples = np.concatenate([x for x in input_examples ])
   all_labels = np.concatenate([x for x in input_labels])
@@ -145,72 +146,7 @@ def get_random_batches(full_examples,input_labels):
   return (features, labels)
 
   
-def _get_examples_batch():
-  
-  """
-  Returns a shuffled batch of examples of all audio classes.
 
-  Note that this is just a toy function because this is a simple demo intended
-  to illustrate how the training code might work.
-
-  Returns:
-    a tuple (features, labels) where features is a NumPy array of shape
-    [batch_size, num_frames, num_bands] where the batch_size is variable and
-    each row is a log mel spectrogram patch of shape [num_frames, num_bands]
-    suitable for feeding VGGish, while labels is a NumPy array of shape
-    [batch_size, num_classes] where each row is a multi-hot label vector that
-    provides the labels for corresponding rows in features.
-  """
-  
-  
-  #my code starting here ...
-
-  import os 
-  import numpy as np
-
-  #setting directory for scanning files
-  rootDir = "./wav_files/"
-  
-  #find out how many classes
-  nr_classes = 0
-  for dirName in os.walk(rootDir):
-    nr_classes +=1
-
-  counter = 0
-  input_examples =[]
-  input_labels = []
-  
-  #3 seconds frame each
-  num_seconds=5 
-  for dirName,subdirList, fileList in os.walk(rootDir):
-    for fname in fileList:
-        path = dirName+"/"+fname
-
-        #calling vggish function, reads in wav file and returns mel spectrogram
-        signal_example = vggish_input.wavfile_to_examples(path)
-        #takes out random sequence from entire spectrogram (for instance 4 frames = 4 seconds of audio)
-        signal_example= random_frame(signal_example,num_seconds)
-        encoded = (get_one_hot(counter-1,nr_classes))/nr_classes
-        #sequence gets labeled
-        signal_label = np.array(encoded *signal_example.shape[0])
-        input_examples.append(signal_example)
-        input_labels.append(signal_label)  
-    counter +=1
-  
-  
-
-  all_examples = np.concatenate([x for x in input_examples ])
-  all_labels = np.concatenate([x for x in input_labels])
-
-  labeled_examples = list(zip(all_examples,all_labels))
-  shuffle(labeled_examples)
-
-  # Separate and return the features and labels.
-  features = [example for (example, _) in labeled_examples]
-  labels = [label for (_, label) in labeled_examples]
-
-  return (features, labels)
-  
 
 def main(_):
 
@@ -231,6 +167,7 @@ def main(_):
           fc, _NUM_CLASSES, activation_fn=None, scope='logits')
       tf.sigmoid(logits, name='prediction')
 
+
       # Add training ops.
       with tf.variable_scope('train'):
         global_step = tf.Variable(
@@ -242,7 +179,7 @@ def main(_):
         # a 1 in the position of each positive class label, and 0 elsewhere.
         labels = tf.placeholder(
             tf.float32, shape=(None, _NUM_CLASSES), name='labels')
-
+      
         # Cross-entropy label loss.
         xent = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=logits, labels=labels, name='xent')
@@ -254,6 +191,25 @@ def main(_):
             learning_rate=vggish_params.LEARNING_RATE,
             epsilon=vggish_params.ADAM_EPSILON)
         optimizer.minimize(loss, global_step=global_step, name='train_op')
+      
+      #Add evaluation ops
+      with tf.variable_scope("evaluation"):
+        correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) 
+
+    # create a summarizer that summarizes loss and accuracy
+    tf.summary.scalar("Accuracy", accuracy)
+
+    # add average loss summary over entire batch
+    tf.summary.scalar("Loss", tf.reduce_mean(xent)) 
+
+    # merge summaries
+    summary_op = tf.summary.merge_all()
+
+    # create saver object
+    saver = tf.train.Saver()
+
+
 
     # Initialize all variables in the model, and then load the pre-trained
     # VGGish checkpoint.
@@ -263,11 +219,16 @@ def main(_):
     # Locate all the tensors and ops we need for the training loop.
     features_tensor = sess.graph.get_tensor_by_name(
         vggish_params.INPUT_TENSOR_NAME)
+    output_tensor = sess.graph.get_tensor_by_name(
+      vggish_params.OUTPUT_TENSOR_NAME)
     labels_tensor = sess.graph.get_tensor_by_name('mymodel/train/labels:0')
     global_step_tensor = sess.graph.get_tensor_by_name(
         'mymodel/train/global_step:0')
     loss_tensor = sess.graph.get_tensor_by_name('mymodel/train/loss_op:0')
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
+    
+
+    #logit_tensor = sess.graph.get_tensor_by_name('logits:0')
     #init saver
     saver = tf.train.Saver()
 
@@ -275,16 +236,16 @@ def main(_):
     all_examples, all_labels =load_spectrogram()
     
     # The training loop.
-    for _ in range(FLAGS.num_batches):
-      #nested for loop for smaller batches?
-      #(features, labels) = _get_examples_batch()
+    for step in range(FLAGS.num_batches):
       (features, labels) = get_random_batches(all_examples,all_labels)
-      #print(features.shape())
-      [num_steps, loss, _] = sess.run(
-          [global_step_tensor, loss_tensor, train_op],
+      [num_steps, loss,_,] = sess.run([global_step_tensor, loss_tensor, train_op],
           feed_dict={features_tensor: features, labels_tensor: labels})
       print('Step %d: loss %g' % (num_steps, loss))
-    
+
+      if num_steps%1 == 0:
+        acc = sess.run(accuracy, feed_dict={features_tensor: features, labels_tensor: labels})
+        print("mid train accuracy:", acc, "at step:", num_steps)      
+
     saver = tf.train.Saver()
     #Save the variables to disk.
     saver.save(sess, "./temp/my_test_model.ckpt",global_step=23)
