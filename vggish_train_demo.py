@@ -46,6 +46,7 @@ Usage:
 from __future__ import print_function
 
 from random import shuffle
+import math
 import matplotlib  
 matplotlib.use('TkAgg')   
 import matplotlib.pyplot as plt
@@ -57,7 +58,7 @@ import contextlib
 import wave
 from scipy.io import wavfile
 from numpy import array
-
+import sklearn.model_selection as sk
 import vggish_input
 import vggish_params
 import vggish_slim
@@ -83,57 +84,51 @@ flags.DEFINE_string(
 FLAGS = flags.FLAGS
 
 #needs fix
-_NUM_CLASSES = 6
+_NUM_CLASSES = 3
 
-def random_frame(spectogram, seconds):
+def random_frame(spectogram, min_size, max_size):
+  x,y,z = spectogram.shape
+  if x >=min_size and max_size <=x:
     #picks a random few second frame from spectogram array
-    x,y,z = spectogram.shape
-    random_nr = np.random.random_integers(0,x-seconds)
-    return spectogram[random_nr:(random_nr+seconds),0:y,0:z]
+    length = np.random.random_integers(low=min_size,high=max_size)
+    random_start = np.random.random_integers(low=0,high=x-length)
+    return spectogram[random_start:(random_start+length),0:y,0:z]
+  else:
+    return spectogram
 
 def get_one_hot(target, nb_classes):
   return np.eye(nb_classes)[np.array(target).reshape(-1)]
 
 #load spectrograms into list
-def load_spectrogram():
-  import os 
-  import numpy as np
-
-  #setting directory for scanning files
-  rootDir = "./wav_files/"
-  
+def load_spectrogram(rootDir):
   counter = 0
   input_examples =[]
   input_labels = []
-  
-  #5 seconds frame each
-  spectrogram_list = []
-  label_list =[] 
-  num_seconds = 1 
-  for dirName,subdirList, fileList in os.walk(rootDir):
+   
+  for dirName, subdirList, fileList  in os.walk(rootDir):
+    print(dirName)
     for fname in fileList:
-        path = dirName+"/"+fname
-        #print(path)
-        #calling vggish function, reads in wav file and returns mel spectrogram
-        signal_example = vggish_input.wavfile_to_examples(path)
-        encoded = (get_one_hot(counter-1,_NUM_CLASSES))
-        #print(signal_example.shape[0])
-        #signal_label = np.array(encoded *signal_example.shape[0])
-        signal_label =np.array(encoded)
-        print(encoded)
-        input_examples.append(signal_example)
-        input_labels.append(signal_label)
+      if fname.endswith(".wav"):
+          path = dirName+"/"+fname
+          #print(path)
+          #calling vggish function, reads in wav file and returns mel spectrogram
+          signal_example = vggish_input.wavfile_to_examples(path)
+          encoded = (get_one_hot(counter-1,_NUM_CLASSES))
+          signal_label =np.array(encoded)
+          #Shows what classes got what encoding on terminal
+          print(encoded)
+          input_examples.append(signal_example)
+          input_labels.append(signal_label)
     counter +=1
   return input_examples, input_labels
 
-def get_random_batches(full_examples,input_labels):
-  num_seconds = 4
+def get_random_batches(full_examples,input_labels,start,end):
+  
   input_examples=[]
   for element in full_examples:
     #gets just the 5 second sequence for each example 
-    #signal_example= random_frame(element,num_seconds)
-    #input_examples.append(signal_example)
-    input_examples.append(element)
+    signal_example= random_frame(element,start,end)
+    input_examples.append(signal_example)
 
   all_examples = np.concatenate([x for x in input_examples ])
   all_labels = np.concatenate([x for x in input_labels])
@@ -142,12 +137,9 @@ def get_random_batches(full_examples,input_labels):
   # Separate and return the features and labels.
   features = [example for (example, _) in labeled_examples]
   labels = [label for (_, label) in labeled_examples]
-  
   return (features, labels)
 
   
-
-
 def main(_):
 
   with tf.Graph().as_default(), tf.Session() as sess:
@@ -192,10 +184,11 @@ def main(_):
             epsilon=vggish_params.ADAM_EPSILON)
         optimizer.minimize(loss, global_step=global_step, name='train_op')
       
-      #Add evaluation ops
-      with tf.variable_scope("evaluation"):
-        correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) 
+        #Add evaluation ops
+        with tf.variable_scope("evaluation"):
+          prediction = tf.argmax(logits,1)
+          correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+          accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) 
 
     # create a summarizer that summarizes loss and accuracy
     tf.summary.scalar("Accuracy", accuracy)
@@ -217,34 +210,76 @@ def main(_):
     vggish_slim.load_vggish_slim_checkpoint(sess, FLAGS.checkpoint)
 
     # Locate all the tensors and ops we need for the training loop.
-    features_tensor = sess.graph.get_tensor_by_name(
-        vggish_params.INPUT_TENSOR_NAME)
-    output_tensor = sess.graph.get_tensor_by_name(
-      vggish_params.OUTPUT_TENSOR_NAME)
+    features_tensor = sess.graph.get_tensor_by_name(vggish_params.INPUT_TENSOR_NAME)
+    output_tensor = sess.graph.get_tensor_by_name(vggish_params.OUTPUT_TENSOR_NAME)
     labels_tensor = sess.graph.get_tensor_by_name('mymodel/train/labels:0')
-    global_step_tensor = sess.graph.get_tensor_by_name(
-        'mymodel/train/global_step:0')
+    global_step_tensor = sess.graph.get_tensor_by_name('mymodel/train/global_step:0')
     loss_tensor = sess.graph.get_tensor_by_name('mymodel/train/loss_op:0')
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
-    
-
-    #logit_tensor = sess.graph.get_tensor_by_name('logits:0')
-    #init saver
-    saver = tf.train.Saver()
+  
 
     #loads all input with corresponding label
-    all_examples, all_labels =load_spectrogram()
+    #training
+    print("Load data set...")
+    all_examples, all_labels =load_spectrogram("./wav_files/")
+    #creates training and test set
+    X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=0.2)
     
     # The training loop.
-    for step in range(FLAGS.num_batches):
-      (features, labels) = get_random_batches(all_examples,all_labels)
-      [num_steps, loss,_,] = sess.run([global_step_tensor, loss_tensor, train_op],
-          feed_dict={features_tensor: features, labels_tensor: labels})
-      print('Step %d: loss %g' % (num_steps, loss))
+    for step in range(FLAGS.num_batches):      
+      #extract random sequences for each example
+      #maybe just allow very little variation
+      (X_train, y_train) = get_random_batches(X_train_entire,y_train_entire,6,9)
+      
+      #validation set stays the same 
+      (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire,6,9)
+      #implementing mini batch
+      
+      minibatch_size = int(len(X_train)/1)
+      
+      counter =1
+      for i in range(0, len(X_train), minibatch_size):
+        # Get pair of (X, y) of the current minibatch/chunk
+        X_train_mini = X_train[i:i + minibatch_size]
+        y_train_mini = y_train[i:i + minibatch_size]
+        print("Step: "+str(step+1)+":")
+        print(str(counter)+"/"+str(int(math.ceil(len(X_train)/minibatch_size))))
+        
+        [num_steps, loss,_, train_acc] = sess.run([global_step_tensor, loss_tensor, train_op,accuracy],feed_dict={features_tensor: X_train_mini, labels_tensor: y_train_mini})
+        print("Loss in minibatch: "+str(loss))
+        print("Training Acc in minibatch: "+str(train_acc))
+        counter +=1
 
-      if num_steps%1 == 0:
-        acc = sess.run(accuracy, feed_dict={features_tensor: features, labels_tensor: labels})
-        print("mid train accuracy:", acc, "at step:", num_steps)      
+        #every 1 steps validation accuracy
+        if (num_steps)%1 == 0:
+          val_acc,pred_val = sess.run([accuracy,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test})
+          print("Validation accuracy:", val_acc)
+          
+          pred = sess.run([prediction],feed_dict={features_tensor:X_test})
+          print("###Input###")
+          print(y_test)
+          print("###Output###")
+          print(pred)
+          print(pred_val)
+          
+          """
+          fmt = '{:<8}{:<20}{:<20}{}'
+          print(fmt.format('', , 'Actual Vector','True/ False'))
+          for j, (pred,y_test, pred_val) in enumerate(zip(pred,y_test, pred_val)):
+            print(fmt.format(j, pred,y_test, pred_val))
+          """
+          
+          #print( prediction.eval(feed_dict={features_tensor: X_test}))
+          #print (sess.run(prediction,{features_tensor:X_test}))
+          #print("actual input:")
+          #print(y_test)
+          #print("Validation prediction:")
+          #print(pred_val)
+
+        print("###############################")
+
+
+
 
     saver = tf.train.Saver()
     #Save the variables to disk.
