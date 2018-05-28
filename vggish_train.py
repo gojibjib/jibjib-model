@@ -1,62 +1,15 @@
-# Copyright 2017 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+#!/usr/bin/env python2
 
-r"""A simple demonstration of running VGGish in training mode.
-
-This is intended as a toy example that demonstrates how to use the VGGish model
-definition within a larger model that adds more layers on top, and then train
-the larger model. If you let VGGish train as well, then this allows you to
-fine-tune the VGGish model parameters for your application. If you don't let
-VGGish train, then you use VGGish as a feature extractor for the layers above
-it.
-
-For this toy task, we are training a classifier to distinguish between three
-classes: sine waves, constant signals, and white noise. We generate synthetic
-waveforms from each of these classes, convert into shuffled batches of log mel
-spectrogram examples with associated labels, and feed the batches into a model
-that includes VGGish at the bottom and a couple of additional layers on top. We
-also plumb in labels that are associated with the examples, which feed a label
-loss used for training.
-
-Usage:
-  # Run training for 100 steps using a model checkpoint in the default
-  # location (vggish_model.ckpt in the current directory). Allow VGGish
-  # to get fine-tuned.
-  $ python vggish_train_demo.py --num_batches 100
-
-  # Same as before but run for fewer steps and don't change VGGish parameters
-  # and use a checkpoint in a different location
-  $ python vggish_train_demo.py --num_batches 50 \
-                                --train_vggish=False \
-                                --checkpoint /path/to/model/checkpoint
-"""
+# vggish_train.py - Train a to recognize bird voices upon Google's audioset model
+# https://github.com/tensorflow/models/tree/master/research/audioset for more information.
 
 from __future__ import print_function
-
 from random import shuffle
 import math
-import matplotlib  
-matplotlib.use('TkAgg')   
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import os 
 import numpy as np
-import contextlib
-import wave
-from scipy.io import wavfile
 from numpy import array
 import sklearn.model_selection as sk
 from sklearn.preprocessing import OneHotEncoder
@@ -66,6 +19,8 @@ import vggish_params
 import vggish_slim
 import time 
 from numpy import array
+import pickle
+from traceback import print_exc
 
 flags = tf.app.flags
 slim = tf.contrib.slim
@@ -87,8 +42,30 @@ flags.DEFINE_string(
 
 FLAGS = flags.FLAGS
 
-#needs fix
-_NUM_CLASSES = 3
+# Folders
+input_dir = os.path.abspath("./input")
+data_dir = os.path.join(input_dir, "data/")
+output_dir = os.path.abspath("./output")
+log_dir = os.path.join(output_dir, "log/")
+model_dir = os.path.join(output_dir, "model/")
+
+# Load pickle into bird_id_map, this dict maps Bird_name -> Database ID
+bird_id_map = {}
+map_path = os.path.join(input_dir, "bird_id_map.pickle")
+try:
+  with open(map_path, "rb") as rf:
+    # TODO: Load with protocol 2
+    bird_id_map = pickle.load(rf)
+except:
+  print("Unable to load {}".format(map_path))
+  print_exc()
+
+# This dict maps counter ID (for internal labels) -> Bird_name
+train_id_map = {}
+
+# We need to check how many classes are present
+_NUM_CLASSES = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
+print("Number of classes: {}".format(_NUM_CLASSES))
 
 def random_frame(spectogram, min_size, max_size):
   if min_size <0 or max_size <0:
@@ -115,17 +92,27 @@ def load_spectrogram(rootDir):
   counter = 0
   input_examples =[]
   input_labels = []
-   
+
   for dirName, subdirList, fileList  in os.walk(rootDir):
     print(dirName)
+    bird = os.path.basename(os.path.normpath(dirName))
+    if bird == "data":
+      continue
+
+    train_id_map[counter] = bird
+    # encode_pos = bird_id_map[bird]
     for fname in fileList:
       if fname.endswith(".wav"):
-          path = dirName+"/"+fname
+          path = os.path.join(dirName, fname)
+
           #calling vggish function, reads in wav file and returns mel spectrogram
           signal_example = vggish_input.wavfile_to_examples(path)
           #encoded = get_one_hot(counter-1,_NUM_CLASSES)
+          
           encoded = np.zeros((_NUM_CLASSES))
-          encoded[counter-1]=1
+          encoded[counter]=1
+          #encoded[encode_pos-1]=1
+
           encoded=encoded.tolist()
           signal_label =np.array([encoded]*signal_example.shape[0])
           print(signal_label)
@@ -219,17 +206,14 @@ def main(_):
     #summary_op = tf.summary.merge_all()
     summary_op = tf.summary.merge_all()
 
-
-    train_writer = tf.summary.FileWriter( 'log/train',
+    # TensorBoard stuff
+    train_writer = tf.summary.FileWriter(os.path.join(log_dir, "train/"),
                                       sess.graph)
-    test_writer = tf.summary.FileWriter('log/test',
+    test_writer = tf.summary.FileWriter(os.path.join(log_dir, "test/"),
                                       sess.graph)
     
 
     tf.global_variables_initializer().run()
-
-
-
 
     # Initialize all variables in the model, and then load the pre-trained
     # VGGish checkpoint.
@@ -248,11 +232,10 @@ def main(_):
     #loads all input with corresponding label
     #training
     print("Load data set...")
-    all_examples, all_labels =load_spectrogram("./wav_files/")
+    all_examples, all_labels =load_spectrogram(os.path.join(input_dir, "data/"))
     #creates training and test set
     X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=0.1)
     
-
     # The training loop.
     for step in range(FLAGS.num_batches):      
       #extract random sequences for each example
@@ -285,13 +268,15 @@ def main(_):
         #every 1 steps validation accuracy
         if (i)%2 == 0:
           summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test})
+          print("Validation Accuracy: {}".format(val_acc))
           test_writer.add_summary(summary, step*minibatch_size+i)
 
         print("###############################")
-    #saver = tf.train.Saver()
+    
+    saver = tf.train.Saver()
     #Save the variables to disk.
-    #saver.save(sess, "./temp/my_test_model.ckpt",global_step=23)
-    #print("Model saved in path: %s" % save_path)
+    save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=5)
+    print("Model saved in path: %s" % save_path)
 
 if __name__ == '__main__':
   tf.app.run()

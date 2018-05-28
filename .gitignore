@@ -1,5 +1,9 @@
 # Project #
-
+*.wav
+*.local
+*.ckpt
+output/log/*
+output/train/*
 # End of Project #
 # Created by https://www.gitignore.io/api/go,macos,python,intellij+all
 
