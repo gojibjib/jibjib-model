@@ -3,3 +3,4 @@ scipy
 resampy
 tensorflow
 six
+sklearn

@@ -4,6 +4,8 @@
 *.ckpt
 output/log/*
 output/train/*
+venv2/
+venv3/
 # End of Project #
 # Created by https://www.gitignore.io/api/go,macos,python,intellij+all
 

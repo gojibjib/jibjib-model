@@ -51,7 +51,7 @@ model_dir = os.path.join(output_dir, "model/")
 
 # Load pickle into bird_id_map, this dict maps Bird_name -> Database ID
 bird_id_map = {}
-map_path = os.path.join(input_dir, "bird_id_map.pickle")
+map_path = os.path.join(input_dir, "bird_id_map.pickle", protocol=2)
 try:
   with open(map_path, "rb") as rf:
     # TODO: Load with protocol 2

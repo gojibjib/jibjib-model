@@ -1,5 +1,0 @@
-numpy
-tensorflow
-scipy
-resampy
-six
