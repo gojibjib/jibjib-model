@@ -1,11 +1,12 @@
 # Project #
 *.wav
 *.local
-*.ckpt
+*.ckpt*
 output/log/*
 output/train/*
 venv2/
 venv3/
+*.pickle
 # End of Project #
 # Created by https://www.gitignore.io/api/go,macos,python,intellij+all
 

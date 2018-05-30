@@ -22,6 +22,9 @@ from traceback import print_exc
 
 flags = tf.app.flags
 slim = tf.contrib.slim
+import time
+
+start = time.time()
 
 # Number of epochs
 flags.DEFINE_integer(
@@ -213,21 +216,20 @@ def main(_):
     
     # The training loop.
     for step in range(FLAGS.num_batches):
-      print("######## Epoch {}/{} started ########")      
+      print("######## Epoch {}/{} started ########".format(step + 1, FLAGS.num_batches))      
       # extract random sequences for each example
       # maybe just allow very little variation
       (X_train, y_train) = get_random_batches(X_train_entire,y_train_entire)
       
       #validation set stays the same 
       (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire)
-      #implementing mini batch
-  
+      
+      # Train on n batches per epoch
       minibatch_n = 5
-      minibatch_size = int(len(X_train)/minibatch_n)
+      minibatch_size = len(X_train) / minibatch_n
       print("\nStarting training with {} audio frames\n".format(len(X_train)))
-      counter = 1
       for i in range(0, len(X_train), minibatch_size):
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
+        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, i + 1, minibatch_n))
         # Get pair of (X, y) of the current minibatch/chunk
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
@@ -237,20 +239,22 @@ def main(_):
         print("Loss in minibatch: "+str(loss))
         print("Training accuracy in minibatch: "+str(train_acc))
         
-        # Check validation accuracy every 2 steps
+        # Check validation accuracy every step
         if i%2 == 0:
           summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test})
           print("Validation Accuracy: {}".format(val_acc))
           test_writer.add_summary(summary, step*minibatch_size+i)
-          
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
+
+        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, i + 1, minibatch_n))
         print()
-        counter +=1
 
     saver = tf.train.Saver()
     #Save the variables to disk.
     save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
-    print("Model saved in path: %s" % save_path)
+    print("Model saved to %s" % save_path)
+    
+    end = time.time()
+    print("Training finished after {}s".format(end - start))
 
 if __name__ == '__main__':
   tf.app.run()

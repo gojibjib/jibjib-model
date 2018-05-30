@@ -24,6 +24,12 @@ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 
 Copy all training folders / files into `input/data/`
 
+Create output folders, if necessary:
+
+```
+mkdir -p output/logs output/train output/model
+```
+
 Get the [`bird_id_map.pickle`](github.com/gojibjib/voice-grabber):
 
 ```
