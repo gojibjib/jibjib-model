@@ -228,8 +228,9 @@ def main(_):
       minibatch_n = 5
       minibatch_size = len(X_train) / minibatch_n
       print("\nStarting training with {} audio frames\n".format(len(X_train)))
+      counter = 1
       for i in range(0, len(X_train), minibatch_size):
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, i + 1, minibatch_n))
+        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
         # Get pair of (X, y) of the current minibatch/chunk
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
@@ -245,8 +246,9 @@ def main(_):
           print("Validation Accuracy: {}".format(val_acc))
           test_writer.add_summary(summary, step*minibatch_size+i)
 
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, i + 1, minibatch_n))
+        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
         print()
+        counter += 1
 
     saver = tf.train.Saver()
     #Save the variables to disk.
