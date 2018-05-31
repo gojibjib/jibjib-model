@@ -32,7 +32,9 @@ flags.DEFINE_integer(
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
-flags.DEFINE_integer('num_mini_batches', 8, 'Number of Mini batches executed per epoch (batch).')
+flags.DEFINE_integer('num_mini_batches', 5, 'Number of Mini batches executed per epoch (batch).')
+
+flags.DEFINE_integer('num_classes', 6, 'Number of classes to train on')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -71,7 +73,8 @@ train_id_list_path = os.path.join(output_dir, "train_id_list.pickle")
 #   print_exc()
 
 # We need to check how many classes are present
-_NUM_CLASSES = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
+# _NUM_CLASSES = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
+# FLAGS.num_classes = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
 
 #load spectrograms into list
 def load_spectrogram(rootDir):
@@ -93,7 +96,7 @@ def load_spectrogram(rootDir):
           #calling vggish function, reads in wav file and returns mel spectrogram
           signal_example = vggish_input.wavfile_to_examples(path)
           
-          encoded = np.zeros((_NUM_CLASSES))
+          encoded = np.zeros((FLAGS.num_classes))
           encoded[counter]=1
 
           encoded=encoded.tolist()
@@ -135,13 +138,17 @@ def main(_):
     # Define a shallow classification model and associated training ops on top
     # of VGGish.
     with tf.variable_scope('mymodel'):
+      print("Number of epochs: {}".format(FLAGS.num_batches))
+      print("Number of classes: {}".format(FLAGS.num_classes))
+      print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
+
       # Add a fully connected layer with 100 units.
       num_units = 100
       fc = slim.fully_connected(embeddings, num_units)
 
       # Add a classifier layer at the end, consisting of parallel logistic
       # classifiers, one per class. This allows for multi-class tasks.
-      logits = slim.fully_connected(fc, _NUM_CLASSES, activation_fn=None, scope='logits')
+      logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
       
       tf.sigmoid(logits, name='prediction')
 
@@ -155,7 +162,7 @@ def main(_):
         # Labels are assumed to be fed as a batch multi-hot vectors, with
         # a 1 in the position of each positive class label, and 0 elsewhere.
         labels = tf.placeholder(
-            tf.float32, shape=(None,_NUM_CLASSES), name='labels')
+            tf.float32, shape=(None,FLAGS.num_classes), name='labels')
       
         # Cross-entropy label loss.
         xent = tf.nn.sigmoid_cross_entropy_with_logits(
@@ -206,7 +213,6 @@ def main(_):
     loss_tensor = sess.graph.get_tensor_by_name('mymodel/train/loss_op:0')
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
   
-
     #loads all input with corresponding label
     #training
     print("Loading data set and mapping birds to training IDs...")
@@ -232,6 +238,7 @@ def main(_):
       for i in range(0, len(X_train), minibatch_size):
         print("(Epoch {}/{}) ==> Minibatch {} started ...".format(step+1, FLAGS.num_batches, counter))
         # Get pair of (X, y) of the current minibatch/chunk
+
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
         
