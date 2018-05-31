@@ -216,7 +216,7 @@ def main(_):
     #loads all input with corresponding label
     #training
     print("Loading data set and mapping birds to training IDs...")
-    all_examples, all_labels =load_spectrogram(os.path.join(input_dir, "data/"))
+    all_examples, all_labels =load_spectrogram(os.path.join(data_dir))
     #creates training and test set
     X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=0.2)
     
@@ -227,7 +227,7 @@ def main(_):
       # maybe just allow very little variation
       (X_train, y_train) = get_random_batches(X_train_entire,y_train_entire)
       
-      #validation set stays the same 
+      # validation set stays the same 
       (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire)
       
       # Train on n batches per epoch
