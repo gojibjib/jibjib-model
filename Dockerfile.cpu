@@ -16,11 +16,11 @@ WORKDIR /model
 #     python get-pip.py && \
 #     rm get-pip.py
 
-COPY requirements.txt ./
+COPY requirements-docker.txt ./
 COPY *.py ./
 COPY *.ckpt ./
 
-RUN pip install -r requirements.txt
+RUN pip install -r requirements-docker.txt
 
 VOLUME /model/input
 VOLUME /model/output

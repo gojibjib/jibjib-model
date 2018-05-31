@@ -19,18 +19,20 @@ import time
 from numpy import array
 import pickle
 from traceback import print_exc
+import sys
+import datetime
 
 flags = tf.app.flags
 slim = tf.contrib.slim
 import time
-
-start = time.time()
 
 # Number of epochs
 flags.DEFINE_integer(
     'num_batches', 10,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
+
+flags.DEFINE_integer('num_mini_batches', 8, 'Number of Mini batches executed per epoch (batch).')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -52,28 +54,24 @@ log_dir = os.path.join(output_dir, "log/")
 model_dir = os.path.join(output_dir, "model/")
 
 # Load pickle into bird_id_map, this dict maps Bird_name -> Database ID
-bird_id_map = {}
-bird_id_map_path = os.path.join(input_dir, "bird_id_map.pickle")
+# bird_id_map = {}
+# bird_id_map_path = os.path.join(input_dir, "bird_id_map.pickle")
 
 # Save train_id_list as pickle, so we can later translate back train IDs/labels (counter) to birds
 train_id_list = []
 train_id_list_path = os.path.join(output_dir, "train_id_list.pickle")
 
-pickle.HIGHEST_PROTOCOL
-try:
-  with open(bird_id_map_path, "rb") as rf:
-    bird_id_map = pickle.load(rf)
-except:
-  print("Unable to load {}".format(bird_id_map_path))
-  print_exc()
+# print("Loading {}".format(bird_id_map_path))
+# pickle.HIGHEST_PROTOCOL
+# try:
+#   with open(bird_id_map_path, "rb") as rf:
+#     bird_id_map = pickle.load(rf)
+# except:
+#   print("Unable to load {}".format(bird_id_map_path))
+#   print_exc()
 
 # We need to check how many classes are present
 _NUM_CLASSES = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
-print("Number of classes: {}".format(_NUM_CLASSES))
-
-def get_immediate_subdirectories(a_dir):
-    return [name for name in os.listdir(a_dir)
-            if os.path.isdir(os.path.join(a_dir, name))]
 
 #load spectrograms into list
 def load_spectrogram(rootDir):
@@ -129,6 +127,8 @@ def get_random_batches(full_examples,input_labels):
   
 def main(_):
   with tf.Graph().as_default(), tf.Session() as sess:
+    start = time.time()
+
     # Define VGGish.
     embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
 
@@ -225,12 +225,12 @@ def main(_):
       (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire)
       
       # Train on n batches per epoch
-      minibatch_n = 5
+      minibatch_n = FLAGS.num_mini_batches
       minibatch_size = len(X_train) / minibatch_n
-      print("\nStarting training with {} audio frames\n".format(len(X_train)))
+      #print("\nStarting training with {} audio frames\n".format(len(X_train)))
       counter = 1
       for i in range(0, len(X_train), minibatch_size):
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
+        print("(Epoch {}/{}) ==> Minibatch {} started ...".format(step+1, FLAGS.num_batches, counter))
         # Get pair of (X, y) of the current minibatch/chunk
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
@@ -246,18 +246,26 @@ def main(_):
           print("Validation Accuracy: {}".format(val_acc))
           test_writer.add_summary(summary, step*minibatch_size+i)
 
-        print("(Epoch {}/{}) ==> Minibatch {}/{} started ...".format(step+1, FLAGS.num_batches, counter, minibatch_n))
+        print("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()
         counter += 1
 
+    # Save model to disk.
     saver = tf.train.Saver()
-    #Save the variables to disk.
     save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
     print("Model saved to %s" % save_path)
-    
-    end = time.time()
-    print("Training finished after {}s".format(end - start))
 
-if __name__ == '__main__':
-  tf.app.run()
+    now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
+    end = time.time()
+    out = "Training finished after {}s".format(end - start)
+    print(out)
+
+    with open(os.path.join(output_dir, now), "w") as wf:
+      wf.write("Training finished after {}\n".format(out))
   
+if __name__ == '__main__':
+  # Disable stdout buffer
+  sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+  
+  tf.app.run()
+
