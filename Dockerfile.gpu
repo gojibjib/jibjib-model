@@ -3,26 +3,16 @@ FROM tensorflow/tensorflow:latest-gpu
 
 WORKDIR /model
 
-# Install Python
-# RUN apt-get install -y python \
-#         python-dev \
-#         rsync \
-#         software-properties-common && \
-#         apt-get clean && \
-#         rm -rf /var/lib/apt/lists/*
+COPY vggish/ ./vggish
+COPY requirements-docker.txt requirements.txt
 
-# # Install pip
-# RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
-#     python get-pip.py && \
-#     rm get-pip.py
+RUN pip install -r requirements.txt
 
-COPY requirements-docker.txt ./
-COPY *.py ./
-COPY *.ckpt ./
-
-RUN pip install -r requirements-docker.txt
+# Put your code at the end so rebuilds are faster
+COPY code/ ./code
 
 VOLUME /model/input
 VOLUME /model/output
 
+WORKDIR /model/code
 CMD ["python", "vggish_train.py"]

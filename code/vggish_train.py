@@ -5,6 +5,7 @@
 
 from __future__ import print_function
 from random import shuffle
+import sys
 import math
 import numpy as np
 import tensorflow as tf
@@ -12,6 +13,8 @@ import os
 import numpy as np
 from numpy import array
 import sklearn.model_selection as sk
+sys.path.insert(0, os.path.abspath("../vggish"))
+
 import vggish_input
 import vggish_params
 import vggish_slim
@@ -19,7 +22,7 @@ import time
 from numpy import array
 import pickle
 from traceback import print_exc
-import sys
+
 import datetime
 import scipy
 
@@ -43,16 +46,20 @@ flags.DEFINE_boolean(
     'fine-tuning VGGish. If False, VGGish parameters are fixed, thus using '
     'VGGish as a fixed feature extractor.')
 
+flags.DEFINE_boolean('gpu_enabled', True, 'If enabled, uses 2nd GPU, instad of CPU, for validation set')
+
 flags.DEFINE_string(
-    'checkpoint', 'vggish_model.ckpt',
+    'checkpoint', '../input/vggish_model.ckpt',
     'Path to the VGGish checkpoint file.')
+
+flags.DEFINE_float('test_size', 0.1, 'Size of validation set as chunk of batch')
 
 FLAGS = flags.FLAGS
 
 # Folders
-input_dir = os.path.abspath("./input")
+input_dir = os.path.abspath("../input")
 data_dir = os.path.join(input_dir, "data/")
-output_dir = os.path.abspath("./output")
+output_dir = os.path.abspath("../output")
 log_dir = os.path.join(output_dir, "log/")
 model_dir = os.path.join(output_dir, "model/")
 
@@ -138,8 +145,16 @@ def get_random_batches(full_examples,input_labels):
   return (features, labels)
   
 def main(_):
-  with tf.Graph().as_default(), tf.Session() as sess:
+  # allow_soft_placement gives fallback GPU
+  with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True,)) as sess:
     start = time.time()
+    print("Number of epochs: {}".format(FLAGS.num_batches))
+    print("Number of classes: {}".format(FLAGS.num_classes))
+    print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
+    print("Size of Validation set: {}".format(FLAGS.test_size)
+    print("GPU flag set: {}".format(FLAGS.gpu_enabled))
+
+    run_options = tf.RunOptions(report_tensor_allocations_upon_oom = True))
 
     # Define VGGish.
     embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
@@ -147,9 +162,7 @@ def main(_):
     # Define a shallow classification model and associated training ops on top
     # of VGGish.
     with tf.variable_scope('mymodel'):
-      print("Number of epochs: {}".format(FLAGS.num_batches))
-      print("Number of classes: {}".format(FLAGS.num_classes))
-      print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
+
 
       # Add a fully connected layer with 100 units.
       num_units = 100
@@ -187,9 +200,18 @@ def main(_):
 
         #Add evaluation ops
       with tf.variable_scope("evaluation"):
-        prediction = tf.argmax(logits,1)
-        correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+          # if we have 2 GPUs, run evalution on 2nd GPU. If only one GPU, falls back to GPU 0
+          if FLAGS.gpu_enabled:
+            with tf.device("/gpu:1"):
+              prediction = tf.argmax(logits,1)
+              correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+              accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+          # only 1 GPU? Run Eval on CPU
+          else:
+            with tf.device("/cpu:0"):
+              prediction = tf.argmax(logits,1)
+              correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+              accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # create a summarizer that summarizes loss and accuracy
     tf.summary.scalar("Accuracy", accuracy)
@@ -227,7 +249,7 @@ def main(_):
     print("Loading data set and mapping birds to training IDs...")
     all_examples, all_labels =load_spectrogram(os.path.join(data_dir))
     #creates training and test set
-    X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=0.2)
+    X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
     
     # The training loop.
     for step in range(FLAGS.num_batches):
@@ -251,16 +273,17 @@ def main(_):
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
         
-        [summary,num_steps, loss,_, train_acc,temp] = sess.run([summary_op,global_step_tensor, loss_tensor, train_op,accuracy,prediction],feed_dict={features_tensor: X_train_mini, labels_tensor: y_train_mini})
+        [summary,num_steps, loss,_, train_acc,temp] = sess.run([summary_op,global_step_tensor, loss_tensor, train_op,accuracy,prediction],feed_dict={features_tensor: X_train_mini, labels_tensor: y_train_mini}, options=run_options)
         train_writer.add_summary(summary, step*minibatch_size+i)
         print("Loss in minibatch: "+str(loss))
         print("Training accuracy in minibatch: "+str(train_acc))
         
         # Check validation accuracy every step
-        if i%2 == 0:
-          summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test})
-          print("Validation Accuracy: {}".format(val_acc))
-          test_writer.add_summary(summary, step*minibatch_size+i)
+        # if i%6 == 0:
+
+        #   summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
+        #   print("Validation Accuracy: {}".format(val_acc))
+        #   test_writer.add_summary(summary, step*minibatch_size+i)
 
         print("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()

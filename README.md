@@ -12,34 +12,35 @@ Get the container:
 # GPU
 docker pull obitech/jibjib-model:gpu-latest
 
-# CPU
+# CPU, needs nvidia-docker installed
 docker pull obitech/jibjib-model:cpu-latest
+```
+
+Create folders, if necessary:
+```
+mkdir -p output/logs output/train output/model input/data
 ```
 
 Get the [audioset](https://github.com/tensorflow/models/tree/master/research/audioset) checkpoint:
 
 ```
-curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
+curl -O input/vggish_model.ckpt https://storage.googleapis.com/audioset/vggish_model.ckpt
 ```
 
 Copy all training folders / files into `input/data/`
 
-Create output folders, if necessary:
-
-```
-mkdir -p output/logs output/train output/model
-```
 
 Get the [`bird_id_map.pickle`](github.com/gojibjib/voice-grabber):
 
 ```
-curl -O ./input/bird_id_map.pickle https://github.com/gojibjib/voice-grabber/raw/master/meta/bird_id_map.pickle
+curl -O input/bird_id_map.pickle https://github.com/gojibjib/voice-grabber/raw/master/meta/bird_id_map.pickle
 ```
 
 Run the container:
 
 ```
 docker container run --rm -d \
+    --runtime=nvidia \
     -v $(pwd)/input:/model/input \
     -v $(pwd)/output:/model/output \
     obitech/jibjib-model:gpu-latest
@@ -56,26 +57,28 @@ git clone https://github.com/gojibjib/jibjib-model
 Install dependencies:
 
 ```
+# Use python2.7
 pip install -r requirements.txt
-```
-
-Get the [audioset](https://github.com/tensorflow/models/tree/master/research/audioset) checkpoint:
-
-```
-curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 ```
 
 Copy all training folders / files into `input/data/`
 
+Get the [audioset](https://github.com/tensorflow/models/tree/master/research/audioset) checkpoint:
+
+```
+curl -O input/vggish_model.ckpt https://storage.googleapis.com/audioset/vggish_model.ckpt
+```
+
 Get the [`bird_id_map.pickle`](github.com/gojibjib/voice-grabber):
 
 ```
-curl -O ./input/bird_id_map.pickle https://github.com/gojibjib/voice-grabber/raw/master/meta/bird_id_map.pickle
+curl -O input/bird_id_map.pickle https://github.com/gojibjib/voice-grabber/raw/master/meta/bird_id_map.pickle
 ```
 
 Start training:
 
 ```
-# Use python2
+# Make sure to start the script from the code/ directory !
+cd code
 python ./vggish_train.py
 ```
