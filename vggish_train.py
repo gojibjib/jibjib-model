@@ -21,6 +21,7 @@ import pickle
 from traceback import print_exc
 import sys
 import datetime
+import scipy
 
 flags = tf.app.flags
 slim = tf.contrib.slim
@@ -98,13 +99,20 @@ def load_spectrogram(rootDir):
           
           encoded = np.zeros((FLAGS.num_classes))
           encoded[counter]=1
-
+          #print(encoded)
           encoded=encoded.tolist()
+          #print(encoded)
           signal_label =np.array([encoded]*signal_example.shape[0])
+          #print(signal_label)
+          
+          if signal_label != []:
+            #all good: signal not empty
+            input_labels.append(signal_label)
+            input_examples.append(signal_example)
+          else:
+            #signal and corresponding label won't be considered
+            print("Unfit file: "+ str(fname))
 
-          #Shows what classes got what encoding on terminal
-          input_examples.append(signal_example)
-          input_labels.append(signal_label)
     counter +=1
 
   try:
@@ -119,6 +127,7 @@ def load_spectrogram(rootDir):
 def get_random_batches(full_examples,input_labels):
   all_examples = np.concatenate([x for x in full_examples ])
   all_labels = np.concatenate([x for x in input_labels])
+  #all_label = scipy.sparse.hstack([x for x in input_labels])
   labeled_examples = list(zip(all_examples,all_labels))
   shuffle(labeled_examples)
   
