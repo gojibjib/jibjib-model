@@ -349,9 +349,20 @@ def main(_):
         except:
           log.warn("X_train_mini, y_train_mini are already out of scope")
 
-        summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-        log.info("Validation Accuracy: {}".format(val_acc))
-        test_writer.add_summary(summary, step*minibatch_size+i)
+        minibatch_valid_size = 60
+        val_acc_entire = 0.
+        for j in range(0, len(X_test), minibatch_valid_size):
+          X_test_mini = X_test[j:j + minibatch_valid_size]
+          y_test_mini = y_test[j:j + minibatch_valid_size]
+
+          summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test_mini, labels_tensor: y_test_mini},  options=run_options)
+          val_acc_entire += val_acc
+          test_writer.add_summary(summary, step*minibatch_valid_size+j)
+
+        average_val_acc= val_acc_entire/(j/minibatch_valid_size)
+        log.info("Validation Accuracy: {}".format(average_val_acc))
+
+
 
       # Save model to disk.
       saver = tf.train.Saver()
