@@ -48,6 +48,8 @@ flags.DEFINE_boolean(
 
 flags.DEFINE_boolean('gpu_enabled', True, 'If enabled, uses 2nd GPU, instad of CPU, for validation set')
 
+flags.DEFINE_boolean('xval', True, 'If enabled, uses cross-validation')
+
 flags.DEFINE_string(
     'checkpoint', '../input/vggish_model.ckpt',
     'Path to the VGGish checkpoint file.')
@@ -146,15 +148,16 @@ def get_random_batches(full_examples,input_labels):
   
 def main(_):
   # allow_soft_placement gives fallback GPU
-  with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True,)) as sess:
+  with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)) as sess:
     start = time.time()
     print("Number of epochs: {}".format(FLAGS.num_batches))
     print("Number of classes: {}".format(FLAGS.num_classes))
     print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
-    print("Size of Validation set: {}".format(FLAGS.test_size)
+    print("Cross validation enabled: {}".format(FLAGS.xval))
+    print("Size of Validation set: {}".format(FLAGS.test_size))
     print("GPU flag set: {}".format(FLAGS.gpu_enabled))
 
-    run_options = tf.RunOptions(report_tensor_allocations_upon_oom = True))
+    run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
 
     # Define VGGish.
     embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
@@ -167,12 +170,12 @@ def main(_):
       # Add a fully connected layer with 100 units.
       num_units = 100
       fc = slim.fully_connected(embeddings, num_units)
-
-      # Add a classifier layer at the end, consisting of parallel logistic
-      # classifiers, one per class. This allows for multi-class tasks.
-      logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
       
-      tf.sigmoid(logits, name='prediction')
+      with tf.device("/gpu:0"):
+        # Add a classifier layer at the end, consisting of parallel logistic
+        # classifiers, one per class. This allows for multi-class tasks.
+        logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
+        tf.sigmoid(logits, name='prediction')
 
       # Add training ops.
       with tf.variable_scope('train'):
@@ -187,22 +190,24 @@ def main(_):
             tf.float32, shape=(None,FLAGS.num_classes), name='labels')
       
         # Cross-entropy label loss.
-        xent = tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=logits, labels=labels, name='xent')
-        loss = tf.reduce_mean(xent, name='loss_op')
-        tf.summary.scalar('loss', loss)
+        with tf.device("/gpu:1"):
+          xent = tf.nn.sigmoid_cross_entropy_with_logits(
+              logits=logits, labels=labels, name='xent')
+          loss = tf.reduce_mean(xent, name='loss_op')
+          tf.summary.scalar('loss', loss)
 
-        # We use the same optimizer and hyperparameters as used to train VGGish.        
-        optimizer = tf.train.AdamOptimizer(
-            learning_rate=vggish_params.LEARNING_RATE,
-            epsilon=vggish_params.ADAM_EPSILON)
-        optimizer.minimize(loss, global_step=global_step, name='train_op')
+        # We use the same optimizer and hyperparameters as used to train VGGish.     
+        with tf.device("/gpu:2"):  
+          optimizer = tf.train.AdamOptimizer(
+              learning_rate=vggish_params.LEARNING_RATE,
+              epsilon=vggish_params.ADAM_EPSILON)
+          optimizer.minimize(loss, global_step=global_step, name='train_op')
 
         #Add evaluation ops
       with tf.variable_scope("evaluation"):
           # if we have 2 GPUs, run evalution on 2nd GPU. If only one GPU, falls back to GPU 0
           if FLAGS.gpu_enabled:
-            with tf.device("/gpu:1"):
+            with tf.device("/gpu:3"):
               prediction = tf.argmax(logits,1)
               correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
               accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -279,11 +284,11 @@ def main(_):
         print("Training accuracy in minibatch: "+str(train_acc))
         
         # Check validation accuracy every step
-        # if i%6 == 0:
-
-        #   summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-        #   print("Validation Accuracy: {}".format(val_acc))
-        #   test_writer.add_summary(summary, step*minibatch_size+i)
+        if FLAGS.xval:
+          if i%2 == 0:
+            summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
+            print("Validation Accuracy: {}".format(val_acc))
+            test_writer.add_summary(summary, step*minibatch_size+i)
 
         print("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()
