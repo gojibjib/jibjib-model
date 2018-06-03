@@ -48,7 +48,7 @@ flags.DEFINE_boolean(
 
 flags.DEFINE_boolean('gpu_enabled', False, 'If enabled, performs different operations on up to 4 GPUs')
 
-flags.DEFINE_boolean('xval', True, 'If enabled, uses cross-validation')
+flags.DEFINE_boolean('validation', True, 'If enabled, checks against validation set')
 
 flags.DEFINE_string(
     'checkpoint', '../input/vggish_model.ckpt',
@@ -153,7 +153,7 @@ def main(_):
     print("Number of epochs: {}".format(FLAGS.num_batches))
     print("Number of classes: {}".format(FLAGS.num_classes))
     print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
-    print("Cross validation enabled: {}".format(FLAGS.xval))
+    print("Validation enabled: {}".format(FLAGS.validation))
     print("Size of Validation set: {}".format(FLAGS.test_size))
     print("Multi GPU flag set: {}".format(FLAGS.gpu_enabled))
 
@@ -297,17 +297,17 @@ def main(_):
         print("Training accuracy in minibatch: "+str(train_acc))
         
         # Check validation accuracy every step
-        if FLAGS.xval:
-          if i%2 == 0:
-            summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-            print("Validation Accuracy: {}".format(val_acc))
-            test_writer.add_summary(summary, step*minibatch_size+i)
+        # if FLAGS.validation:
+        #   if i%2 == 0:
+        #     summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
+        #     print("Validation Accuracy: {}".format(val_acc))
+        #     test_writer.add_summary(summary, step*minibatch_size+i)
 
         print("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()
         counter += 1
 
-      if FLAGS.xval:
+      if FLAGS.validation:
         summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
         print("Validation Accuracy: {}".format(val_acc))
         test_writer.add_summary(summary, step*minibatch_size+i)
