@@ -104,8 +104,12 @@ def load_spectrogram(rootDir, log):
           path = os.path.join(dirName, fname)
 
           #calling vggish function, reads in wav file and returns mel spectrogram
-          signal_example = vggish_input.wavfile_to_examples(path)
-          
+          try:
+            signal_example = vggish_input.wavfile_to_examples(path)
+          except:
+            log.warn("Skipping {}, unable to extract clean signal example".format(fname))
+            continue
+
           encoded = np.zeros((FLAGS.num_classes))
           encoded[counter]=1
           #log.info(encoded)
@@ -120,7 +124,8 @@ def load_spectrogram(rootDir, log):
             input_examples.append(signal_example)
           else:
             #signal and corresponding label won't be considered
-            log.info("Unfit file: "+ str(fname))
+            log.warn("Skipping {}, unable extract clean signal label".format(fname))
+            continue
 
     counter +=1
 
