@@ -14,7 +14,7 @@ import numpy as np
 from numpy import array
 import sklearn.model_selection as sk
 sys.path.insert(0, os.path.abspath("../vggish"))
-
+import logging
 import vggish_input
 import vggish_params
 import vggish_slim
@@ -87,7 +87,7 @@ train_id_list_path = os.path.join(output_dir, "train_id_list.pickle")
 # FLAGS.num_classes = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
 
 #load spectrograms into list
-def load_spectrogram(rootDir):
+def load_spectrogram(rootDir, log):
   counter = 0
   input_examples =[]
   input_labels = []
@@ -97,7 +97,7 @@ def load_spectrogram(rootDir):
     if bird == "data":
       continue
 
-    print("{} -> {}".format(bird, counter))
+    log.info("{} -> {}".format(bird, counter))
     train_id_list.append(bird)
     for fname in fileList:
       if fname.endswith(".wav"):
@@ -108,11 +108,11 @@ def load_spectrogram(rootDir):
           
           encoded = np.zeros((FLAGS.num_classes))
           encoded[counter]=1
-          #print(encoded)
+          #log.info(encoded)
           encoded=encoded.tolist()
-          #print(encoded)
+          #log.info(encoded)
           signal_label =np.array([encoded]*signal_example.shape[0])
-          #print(signal_label)
+          #log.info(signal_label)
           
           if signal_label != []:
             #all good: signal not empty
@@ -120,7 +120,7 @@ def load_spectrogram(rootDir):
             input_examples.append(signal_example)
           else:
             #signal and corresponding label won't be considered
-            print("Unfit file: "+ str(fname))
+            log.info("Unfit file: "+ str(fname))
 
     counter +=1
 
@@ -128,7 +128,7 @@ def load_spectrogram(rootDir):
     with open(train_id_list_path, "wb") as wf:
       pickle.dump(train_id_list, wf)
   except:
-    print("Unable to dump into {}".format(train_id_list_path))
+    log.info("Unable to dump into {}".format(train_id_list_path))
 
   return input_examples, input_labels
 
@@ -147,15 +147,42 @@ def get_random_batches(full_examples,input_labels):
   return (features, labels)
   
 def main(_):
-  # allow_soft_placement gives fallback GPU
-  with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)) as sess:
+  # allow_soft_placement gives fallback GPU, log_device_placement=True displays device info
+  with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+    now = datetime.datetime.now().isoformat().replace(":", "_")
+    fmt = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s',
+                            '%Y%m%d-%H%M%S')
+    # TF logger
+    tflog = logging.getLogger('tensorflow')
+    tflog.setLevel(logging.DEBUG)
+    tflog_fh = logging.FileHandler(os.path.join(log_dir, "{}-tf.log".format(now)))
+    tflog_fh.setLevel(logging.DEBUG)
+    tflog_fh.setFormatter(fmt)
+    tflog_sh = logging.StreamHandler(sys.stdout)
+    tflog_sh.setLevel(logging.DEBUG)
+    tflog_sh.setFormatter(fmt)
+    tflog.addHandler(tflog_fh)
+    tflog.addHandler(tflog_sh)
+
+    # Root logger
+    log = logging.getLogger()
+    log.setLevel(logging.DEBUG)
+    root_fh = logging.FileHandler(os.path.join(log_dir, "{}-run.log".format(now)))
+    root_fh.setFormatter(fmt)
+    root_fh.setLevel(logging.DEBUG)
+    root_sh = logging.StreamHandler(sys.stdout)
+    root_sh.setFormatter(fmt)
+    root_sh.setLevel(logging.DEBUG)
+    log.addHandler(root_fh)
+    log.addHandler(root_sh)
+
     start = time.time()
-    print("Number of epochs: {}".format(FLAGS.num_batches))
-    print("Number of classes: {}".format(FLAGS.num_classes))
-    print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
-    print("Validation enabled: {}".format(FLAGS.validation))
-    print("Size of Validation set: {}".format(FLAGS.test_size))
-    print("Multi GPU flag set: {}".format(FLAGS.gpu_enabled))
+    log.info("Number of epochs: {}".format(FLAGS.num_batches))
+    log.info("Number of classes: {}".format(FLAGS.num_classes))
+    log.info("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
+    log.info("Validation enabled: {}".format(FLAGS.validation))
+    log.info("Size of Validation set: {}".format(FLAGS.test_size))
+    log.info("Multi GPU flag set: {}".format(FLAGS.gpu_enabled))
 
     run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
 
@@ -264,66 +291,75 @@ def main(_):
   
     #loads all input with corresponding label
     #training
-    print("Loading data set and mapping birds to training IDs...")
-    all_examples, all_labels =load_spectrogram(os.path.join(data_dir))
+    log.info("Loading data set and mapping birds to training IDs...")
+    all_examples, all_labels =load_spectrogram(os.path.join(data_dir), log)
     #creates training and test set
     X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
-    
+
+    # validation set stays the same 
+    (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire)
+
     # The training loop.
     for step in range(FLAGS.num_batches):
-      print("######## Epoch {}/{} started ########".format(step + 1, FLAGS.num_batches))      
+      log.info("######## Epoch {}/{} started ########".format(step + 1, FLAGS.num_batches))      
       # extract random sequences for each example
       # maybe just allow very little variation
       (X_train, y_train) = get_random_batches(X_train_entire,y_train_entire)
       
-      # validation set stays the same 
-      (X_test,y_test) = get_random_batches(X_test_entire,y_test_entire)
-      
       # Train on n batches per epoch
       minibatch_n = FLAGS.num_mini_batches
       minibatch_size = len(X_train) / minibatch_n
-      #print("\nStarting training with {} audio frames\n".format(len(X_train)))
+      #log.info("\nStarting training with {} audio frames\n".format(len(X_train)))
       counter = 1
       for i in range(0, len(X_train), minibatch_size):
-        print("(Epoch {}/{}) ==> Minibatch {} started ...".format(step+1, FLAGS.num_batches, counter))
+        log.info("(Epoch {}/{}) ==> Minibatch {} started ...".format(step+1, FLAGS.num_batches, counter))
         # Get pair of (X, y) of the current minibatch/chunk
 
         X_train_mini = X_train[i:i + minibatch_size]
         y_train_mini = y_train[i:i + minibatch_size]
+
+        log.info("Size of mini batch (features): {}".format(len(X_train_mini)))
+        log.info("Size of mini batch (labels): {}".format(len(y_train_mini)))
         
         [summary,num_steps, loss,_, train_acc,temp] = sess.run([summary_op,global_step_tensor, loss_tensor, train_op,accuracy,prediction],feed_dict={features_tensor: X_train_mini, labels_tensor: y_train_mini}, options=run_options)
         train_writer.add_summary(summary, step*minibatch_size+i)
-        print("Loss in minibatch: "+str(loss))
-        print("Training accuracy in minibatch: "+str(train_acc))
+        log.info("Loss in minibatch: "+str(loss))
+        log.info("Training accuracy in minibatch: "+str(train_acc))
         
         # Check validation accuracy every step
         # if FLAGS.validation:
         #   if i%2 == 0:
         #     summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-        #     print("Validation Accuracy: {}".format(val_acc))
+        #     log.info("Validation Accuracy: {}".format(val_acc))
         #     test_writer.add_summary(summary, step*minibatch_size+i)
 
-        print("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
+        log.info("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()
         counter += 1
 
       if FLAGS.validation:
+        del summary, loss, num_steps, train_acc, temp, X_train, y_train, minibatch_n
+        try:
+           del y_train_mini, X_train_mini
+        except:
+          log.warn("X_train_mini, y_train_mini are already out of scope")
+
         summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-        print("Validation Accuracy: {}".format(val_acc))
+        log.info("Validation Accuracy: {}".format(val_acc))
         test_writer.add_summary(summary, step*minibatch_size+i)
 
-    # Save model to disk.
-    saver = tf.train.Saver()
-    save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
-    print("Model saved to %s" % save_path)
+      # Save model to disk.
+      saver = tf.train.Saver()
+      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
+      log.info("Model saved to %s" % save_path)
 
     now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
     end = time.time()
     out = "Training finished after {}s".format(end - start)
-    print(out)
+    log.info(out)
 
-    with open(os.path.join(output_dir, now), "w") as wf:
-      wf.write("Training finished after {}\n".format(out))
+    # with open(os.path.join(output_dir, now), "w") as wf:
+    #   wf.write("Training finished after {}\n".format(out))
   
 if __name__ == '__main__':
   # Disable stdout buffer
