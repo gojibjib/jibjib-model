@@ -46,7 +46,7 @@ flags.DEFINE_boolean(
     'fine-tuning VGGish. If False, VGGish parameters are fixed, thus using '
     'VGGish as a fixed feature extractor.')
 
-flags.DEFINE_boolean('gpu_enabled', True, 'If enabled, uses 2nd GPU, instad of CPU, for validation set')
+flags.DEFINE_boolean('gpu_enabled', False, 'If enabled, performs different operations on up to 4 GPUs')
 
 flags.DEFINE_boolean('xval', True, 'If enabled, uses cross-validation')
 
@@ -54,7 +54,7 @@ flags.DEFINE_string(
     'checkpoint', '../input/vggish_model.ckpt',
     'Path to the VGGish checkpoint file.')
 
-flags.DEFINE_float('test_size', 0.1, 'Size of validation set as chunk of batch')
+flags.DEFINE_float('test_size', 0.2, 'Size of validation set as chunk of batch')
 
 FLAGS = flags.FLAGS
 
@@ -155,7 +155,7 @@ def main(_):
     print("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
     print("Cross validation enabled: {}".format(FLAGS.xval))
     print("Size of Validation set: {}".format(FLAGS.test_size))
-    print("GPU flag set: {}".format(FLAGS.gpu_enabled))
+    print("Multi GPU flag set: {}".format(FLAGS.gpu_enabled))
 
     run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
 
@@ -171,9 +171,13 @@ def main(_):
       num_units = 100
       fc = slim.fully_connected(embeddings, num_units)
       
-      with tf.device("/gpu:0"):
-        # Add a classifier layer at the end, consisting of parallel logistic
-        # classifiers, one per class. This allows for multi-class tasks.
+      # Add a classifier layer at the end, consisting of parallel logistic
+      # classifiers, one per class. This allows for multi-class tasks.
+      if FLAGS.gpu_enabled:
+        with tf.device("/gpu:0"):
+          logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
+          tf.sigmoid(logits, name='prediction')
+      else:
         logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
         tf.sigmoid(logits, name='prediction')
 
@@ -190,14 +194,26 @@ def main(_):
             tf.float32, shape=(None,FLAGS.num_classes), name='labels')
       
         # Cross-entropy label loss.
-        with tf.device("/gpu:1"):
+        if FLAGS.gpu_enabled:
+          with tf.device("/gpu:1"):
+            xent = tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=logits, labels=labels, name='xent')
+            loss = tf.reduce_mean(xent, name='loss_op')
+        else:
           xent = tf.nn.sigmoid_cross_entropy_with_logits(
               logits=logits, labels=labels, name='xent')
           loss = tf.reduce_mean(xent, name='loss_op')
-          tf.summary.scalar('loss', loss)
+          
+        tf.summary.scalar('loss', loss)
 
-        # We use the same optimizer and hyperparameters as used to train VGGish.     
-        with tf.device("/gpu:2"):  
+        # We use the same optimizer and hyperparameters as used to train VGGish.    
+        if FLAGS.gpu_enabled: 
+          with tf.device("/gpu:2"):  
+            optimizer = tf.train.AdamOptimizer(
+                learning_rate=vggish_params.LEARNING_RATE,
+                epsilon=vggish_params.ADAM_EPSILON)
+            optimizer.minimize(loss, global_step=global_step, name='train_op')
+        else:
           optimizer = tf.train.AdamOptimizer(
               learning_rate=vggish_params.LEARNING_RATE,
               epsilon=vggish_params.ADAM_EPSILON)
@@ -205,18 +221,15 @@ def main(_):
 
         #Add evaluation ops
       with tf.variable_scope("evaluation"):
-          # if we have 2 GPUs, run evalution on 2nd GPU. If only one GPU, falls back to GPU 0
-          if FLAGS.gpu_enabled:
-            with tf.device("/gpu:3"):
-              prediction = tf.argmax(logits,1)
-              correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
-              accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-          # only 1 GPU? Run Eval on CPU
-          else:
-            with tf.device("/cpu:0"):
-              prediction = tf.argmax(logits,1)
-              correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
-              accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        if FLAGS.gpu_enabled:
+          with tf.device("/gpu:3"):
+            prediction = tf.argmax(logits,1)
+            correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        else:
+          prediction = tf.argmax(logits,1)
+          correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+          accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # create a summarizer that summarizes loss and accuracy
     tf.summary.scalar("Accuracy", accuracy)
