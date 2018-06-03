@@ -307,6 +307,11 @@ def main(_):
         print()
         counter += 1
 
+      if FLAGS.xval:
+        summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
+        print("Validation Accuracy: {}".format(val_acc))
+        test_writer.add_summary(summary, step*minibatch_size+i)
+
     # Save model to disk.
     saver = tf.train.Saver()
     save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
