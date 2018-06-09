@@ -32,13 +32,13 @@ import time
 
 # Number of epochs
 flags.DEFINE_integer(
-    'num_batches', 10,
+    'num_batches', 20,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
 flags.DEFINE_integer('num_mini_batches', 5, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 6, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 9, 'Number of classes to train on')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -116,8 +116,7 @@ def load_spectrogram(rootDir, log):
           encoded=encoded.tolist()
           #log.info(encoded)
           signal_label =np.array([encoded]*signal_example.shape[0])
-          #log.info(signal_label)
-          
+          #log.info(signal_label)          
           if signal_label != []:
             #all good: signal not empty
             input_labels.append(signal_label)
@@ -212,6 +211,9 @@ def main(_):
       else:
         logits = slim.fully_connected(fc, FLAGS.num_classes, activation_fn=None, scope='logits')
         tf.sigmoid(logits, name='prediction')
+      print("viewing logits...")
+      print(logits)
+      print("#####")
 
       # Add training ops.
       with tf.variable_scope('train'):
@@ -256,6 +258,7 @@ def main(_):
         if FLAGS.gpu_enabled:
           with tf.device("/gpu:3"):
             prediction = tf.argmax(logits,1)
+            tf.add_to_collection('prediction', prediction)
             correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         else:
@@ -270,7 +273,6 @@ def main(_):
     tf.summary.scalar("Loss", tf.reduce_mean(xent)) 
 
     # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
-    #summary_op = tf.summary.merge_all()
     summary_op = tf.summary.merge_all()
 
     # TensorBoard stuff
@@ -330,33 +332,29 @@ def main(_):
         train_writer.add_summary(summary, step*minibatch_size+i)
         log.info("Loss in minibatch: "+str(loss))
         log.info("Training accuracy in minibatch: "+str(train_acc))
-        
-        # Check validation accuracy every step
-        # if FLAGS.validation:
-        #   if i%2 == 0:
-        #     summary,loss,val_acc,pred, corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test, labels_tensor: y_test},  options=run_options)
-        #     log.info("Validation Accuracy: {}".format(val_acc))
-        #     test_writer.add_summary(summary, step*minibatch_size+i)
 
         log.info("(Epoch {}/{}) ==> Minibatch {} finished ...".format(step+1, FLAGS.num_batches, counter))
         print()
         counter += 1
 
-      # if FLAGS.validation:
-      #   del summary, loss, num_steps, train_acc, temp, X_train, y_train, minibatch_n
-      #   try:
-      #      del y_train_mini, X_train_mini
-      #   except:
-      #     log.warn("X_train_mini, y_train_mini are already out of scope")
+      if FLAGS.validation:
+        del summary, loss, num_steps, train_acc, temp, X_train, y_train, minibatch_n
+        try:
+           del y_train_mini, X_train_mini
+        except:
+          log.warn("X_train_mini, y_train_mini are already out of scope")
 
-        minibatch_valid_size = 60
+        minibatch_valid_size = 5
         val_acc_entire = 0.
         for j in range(0, len(X_test), minibatch_valid_size):
           X_test_mini = X_test[j:j + minibatch_valid_size]
           y_test_mini = y_test[j:j + minibatch_valid_size]
 
-          summary,_,val_acc,_,_ = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test_mini, labels_tensor: y_test_mini},  options=run_options)
+          summary,_,val_acc,pred,corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test_mini, labels_tensor: y_test_mini},  options=run_options)
           val_acc_entire += val_acc
+          print(y_test_mini)
+          print(pred)
+          print(corr_pred)
           test_writer.add_summary(summary, step*minibatch_valid_size+j)
 
         average_val_acc= val_acc_entire/(j/minibatch_valid_size)
@@ -364,7 +362,7 @@ def main(_):
 
       # Save model to disk.
       saver = tf.train.Saver()
-      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"), global_step=step)
+      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=step)
       log.info("Model saved to %s" % save_path)
 
     now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
@@ -372,12 +370,9 @@ def main(_):
     out = "Training finished after {}s".format(end - start)
     log.info(out)
 
-    # with open(os.path.join(output_dir, now), "w") as wf:
-    #   wf.write("Training finished after {}\n".format(out))
   
 if __name__ == '__main__':
   # Disable stdout buffer
   sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
   
   tf.app.run()
-
