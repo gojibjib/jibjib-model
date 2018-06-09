@@ -342,12 +342,12 @@ def main(_):
         print()
         counter += 1
 
-      if FLAGS.validation:
-        del summary, loss, num_steps, train_acc, temp, X_train, y_train, minibatch_n
-        try:
-           del y_train_mini, X_train_mini
-        except:
-          log.warn("X_train_mini, y_train_mini are already out of scope")
+      # if FLAGS.validation:
+      #   del summary, loss, num_steps, train_acc, temp, X_train, y_train, minibatch_n
+      #   try:
+      #      del y_train_mini, X_train_mini
+      #   except:
+      #     log.warn("X_train_mini, y_train_mini are already out of scope")
 
         minibatch_valid_size = 60
         val_acc_entire = 0.
@@ -362,11 +362,9 @@ def main(_):
         average_val_acc= val_acc_entire/(j/minibatch_valid_size)
         log.info("Validation Accuracy: {}".format(average_val_acc))
 
-
-
       # Save model to disk.
       saver = tf.train.Saver()
-      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=2)
+      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"), global_step=step)
       log.info("Model saved to %s" % save_path)
 
     now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
