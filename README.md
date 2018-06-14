@@ -1,7 +1,13 @@
-Vggish_train.py lets a pretrained VGGish model finetune on bird voices. The original final layer is cut off and replaced with our own output nodes. 
-A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model. The goal of this project is to obtain a machine learning model being able to distinguish several hundred classes of birds by their sound. 
+In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
 
-Deploy_model.py restores the pretrained TensorFlow model, consumes a .wav file and generates a semantically meaningful, high-level 128-D embedding. The embeddings are `tfrecord` files that can be fed into a downstream classification model later on.
+We obtain the pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes. 
+A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model.
+After every epoch a snapshot of the models weights and biases is saved on disk. After, we can restore the model to either do a query or continue with training.
+
+We are deploying the model by enabling Tensorflow Serving to reduce response time drastically. 
+
+The goal of this project is to obtain a machine learning model being able to distinguish several hundred classes of birds by their sound. 
+
 
 
 
