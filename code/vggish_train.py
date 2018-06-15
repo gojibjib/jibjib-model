@@ -38,7 +38,7 @@ flags.DEFINE_integer(
 
 flags.DEFINE_integer('num_mini_batches', 5, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 9, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 3, 'Number of classes to train on')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -344,7 +344,7 @@ def main(_):
         except:
           log.warn("X_train_mini, y_train_mini are already out of scope")
 
-        minibatch_valid_size = 5
+        minibatch_valid_size = 20
         val_acc_entire = 0.
         for j in range(0, len(X_test), minibatch_valid_size):
           X_test_mini = X_test[j:j + minibatch_valid_size]

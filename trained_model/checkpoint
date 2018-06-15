@@ -1,2 +1,0 @@
-model_checkpoint_path: "/model/output/model/jibjib_model.ckpt-2"
-all_model_checkpoint_paths: "/model/output/model/jibjib_model.ckpt-2"
