@@ -7,7 +7,7 @@ from scipy.io.wavfile import read
 
 
 def pitcher():
-	for x,subdirList, fileList in os.walk("/Users/Sebastian/Desktop/bird_mp3/wav/"):
+	for x,subdirList, fileList in os.walk("./wav/"):
 		for filename in fileList:
 			if filename.endswith(".wav"):
 				path = str(x + filename)
