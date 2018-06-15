@@ -1,6 +1,6 @@
 In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
 
-Before you start you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) 
+Before you start you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) ![our](https://s3-eu-west-1.amazonaws.com/jibjib/model/jibjib_model_raw.tgz) very own model that has been trained for more than 100 hours.
 Our trainings foundation is a pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes.
 
 During the first step each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. 
