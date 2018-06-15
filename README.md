@@ -15,7 +15,7 @@ After, VGGishs convolutional filters run over each spectrogram and extract meani
 
 After every epoch a snapshot of the models weights and biases is saved on disk. In the next step we can restore the model to either do a query or continue with training.
 
-We are deploying the model by enabling Tensorflow Serving to reduce response time drastically. Check out ![the repository] (https://github.com/gojibjib/jibjib-query) to learn more about how we implemented Tensorflow Serving for our model. 
+We are deploying the model by enabling Tensorflow Serving to reduce response time drastically. Check out ![the repository](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented Tensorflow Serving for our model. 
 
 ## Training
 
