@@ -1,6 +1,11 @@
 In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
 
-We obtain the pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes. 
+We obtain the pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes.
+
+During the first step each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency.
+
+
+
 A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model.
 After every epoch a snapshot of the models weights and biases is saved on disk. After, we can restore the model to either do a query or continue with training.
 
