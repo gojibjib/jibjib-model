@@ -11,7 +11,7 @@ During the first training step a directory containing labeled bird songs is iter
 ![mel spectogram](https://github.com/gojibjib/jibjib-model/blob/master/assets/steinadler_50_50.png)
 
 Furthermore, each bird class is one-hot-encoded and then in pairs of features and corresponding labels fed into the model.
-After, VGGish's convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how features get extracted and then fed into the fully connected layer just like in any other CNN:
+After, VGGish's convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how after some convolutions and subpooling the extracted features are then fed into the fully connected layer just like in any other CNN:
 
 ![mel spectogram](https://raw.githubusercontent.com/gojibjib/jibjib-model/master/assets/Typical_cnn_spectrogram.png)
 
