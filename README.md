@@ -6,12 +6,12 @@ Before you can start, you first need to download a VGGish checkpoint file. You c
 
 The original final layer is cut off and replaced with our own output nodes.
 
-During the first training step a directory containing labeled bird songs is iterated over and each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. For instance, this is the spectrogram of a golden eagles cry:
+During the first training step a directory containing labeled bird songs is iterated over and each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. For instance, this is the spectrogram of a golden eagles call:
 
 ![mel spectogram](https://github.com/gojibjib/jibjib-model/blob/master/assets/steinadler_50_50.png)
 
 Furthermore, each bird class is one-hot-encoded and then in pairs of features and corresponding labels fed into the model.
-After, VGGishs convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how features get extracted and then fed into the fully connected layer just like in any other CNN:
+After, VGGish's convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how features get extracted and then fed into the fully connected layer just like in any other CNN:
 
 ![mel spectogram](https://raw.githubusercontent.com/gojibjib/jibjib-model/master/assets/Typical_cnn_spectrogram.png)
 
