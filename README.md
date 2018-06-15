@@ -1,10 +1,11 @@
 In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
 
-Before you start you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) or ![our](https://s3-eu-west-1.amazonaws.com/jibjib/model/jibjib_model_raw.tgz) very own model that has been trained for more than 100 hours.
-Our trainings foundation is a pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes.
+Before you start you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) or ![our](https://s3-eu-west-1.amazonaws.com/jibjib/model/jibjib_model_raw.tgz) very own model that has been trained for more than 100 hours on a GPU cluster.
 
-During the first step each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. 
+The original final layer is cut off and replaced with our own output nodes.
 
+During the first step each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. For instance, this is the spectrogram of a golden eagles cry:
+![alt text](https://raw.githubusercontent.com/gojibjib/jibjib-model/master/assets/steinadler.png")
 
 
 A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model.
