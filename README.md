@@ -9,7 +9,7 @@ During the first step each .wav file is converted into a spectrogram where the x
 A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model.
 After every epoch a snapshot of the models weights and biases is saved on disk. After, we can restore the model to either do a query or continue with training.
 
-We are deploying the model by enabling Tensorflow Serving to reduce response time drastically. 
+We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. 
 
 The goal of this project is to obtain a machine learning model being able to distinguish several hundred classes of birds by their sound. 
 
