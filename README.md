@@ -1,20 +1,27 @@
+# A model for bird sound classification
+
 In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
 
-We obtain the pretrained model by loading the checkpoint of the orignal model provided by Google. The original final layer is cut off and replaced with our own output nodes.
+Before you can start, you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) or ![our](https://s3-eu-west-1.amazonaws.com/jibjib/model/jibjib_model_raw.tgz) very own model that has been additionally trained for more than 100 hours and 60 epochs on a GPU cluster inside a Docker container.
 
-During the first step each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency.
+The original final layer is cut off and replaced with our own output nodes.
 
+During the first training step a directory containing labeled bird songs is iterated over and each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. For instance, this is the spectrogram of a golden eagles call:
 
-
-A directory containing labeled bird songs is iterated over, .wav audiofiles are transformed into spectrogrammes and their corresponding one-hot label vectors and then consumed by the model.
-After every epoch a snapshot of the models weights and biases is saved on disk. After, we can restore the model to either do a query or continue with training.
-
+<<<<<<< HEAD
 We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. 
+=======
+![mel spectogram](https://github.com/gojibjib/jibjib-model/blob/master/assets/steinadler_50_50.png)
+>>>>>>> e2cc496161f10ee897fd548b75f5943476717c7b
 
-The goal of this project is to obtain a machine learning model being able to distinguish several hundred classes of birds by their sound. 
+Furthermore, each bird class is one-hot-encoded and then in pairs of features and corresponding labels fed into the model.
+After, VGGish's convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how after some convolutions and subpooling the extracted features are then fed into the fully connected layer just like in any other CNN:
 
+![mel spectogram](https://raw.githubusercontent.com/gojibjib/jibjib-model/master/assets/Typical_cnn_spectrogram.png)
 
+After every epoch a snapshot of the models weights and biases is saved on disk. In the next step we can restore the model to either do a query or continue with training.
 
+We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![the repository](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model. 
 
 ## Training
 

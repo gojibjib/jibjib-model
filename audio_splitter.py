@@ -5,7 +5,7 @@ from pydub import AudioSegment
 import os 
 
 def splitter():
-	for x,subdirList, fileList in os.walk("/Users/Sebastian/Desktop/bird_mp3/wav/"):
+	for x,subdirList, fileList in os.walk("./wav/"):
 		print (x)
 		for filename in fileList:
 			if filename.endswith(".wav"):

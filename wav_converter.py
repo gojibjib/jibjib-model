@@ -3,7 +3,7 @@ import os
 
 
 def converter():
-	for x,subdirList, fileList in os.walk("/Users/Sebastian/Desktop/bird_mp3/mp3/"):
+	for x,subdirList, fileList in os.walk("./mp3/"):
 		print(x)
 		print(subdirList)
 		print(fileList)
