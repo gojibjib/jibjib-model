@@ -8,11 +8,7 @@ The original final layer is cut off and replaced with our own output nodes.
 
 During the first training step a directory containing labeled bird songs is iterated over and each .wav file is converted into a spectrogram where the x-axis is the time and the y-axis symbolyzes the frequency. For instance, this is the spectrogram of a golden eagles call:
 
-<<<<<<< HEAD
-We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. 
-=======
 ![mel spectogram](https://github.com/gojibjib/jibjib-model/blob/master/assets/steinadler_50_50.png)
->>>>>>> e2cc496161f10ee897fd548b75f5943476717c7b
 
 Furthermore, each bird class is one-hot-encoded and then in pairs of features and corresponding labels fed into the model.
 After, VGGish's convolutional filters run over each spectrogram and extract meaningful features. The following graphic gives a short overview about how after some convolutions and subpooling the extracted features are then fed into the fully connected layer just like in any other CNN:
@@ -21,7 +17,7 @@ After, VGGish's convolutional filters run over each spectrogram and extract mean
 
 After every epoch a snapshot of the models weights and biases is saved on disk. In the next step we can restore the model to either do a query or continue with training.
 
-We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![the repository](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model. 
+We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model. 
 
 ## Training
 
