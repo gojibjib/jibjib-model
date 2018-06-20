@@ -4,3 +4,4 @@ resampy
 tensorflow-gpu
 six
 sklearn
+cython
