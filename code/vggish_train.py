@@ -362,8 +362,9 @@ def main(_):
 
       # Save model to disk.
       saver = tf.train.Saver()
-      save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=step)
-      log.info("Model saved to %s" % save_path)
+      if step % 15 == 0:
+        save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=step)
+        log.info("Model saved to %s" % save_path)
 
     now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
     end = time.time()
