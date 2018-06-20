@@ -1,0 +1,6 @@
+numpy
+scipy
+resampy
+tensorflow-gpu
+six
+sklearn
