@@ -115,7 +115,7 @@ def spectrogram_to_mel_matrix(num_mel_bins=20,
                               num_spectrogram_bins=129,
                               audio_sample_rate=8000,
                               lower_edge_hertz=125.0,
-                              upper_edge_hertz=3800.0):
+                              upper_edge_hertz=12000.0):
   """Return a matrix that can post-multiply spectrogram rows to make mel.
 
   Returns a np.array matrix A that can be used to post-multiply a matrix S of
