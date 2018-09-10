@@ -1,6 +1,9 @@
 # A model for bird sound classification
 
-In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained VGGish/ Audioset model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. 
+In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained [VGGish/ Audioset](https://github.com/tensorflow/models/tree/master/research/audioset) model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. Please read the following papers for more information:
+
+- Hershey, S. et. al., [CNN Architectures for Large-Scale Audio Classification](https://research.google.com/pubs/pub45611.html), ICASSP 2017
+- Gemmeke, J. et. al., [AudioSet: An ontology and human-labelled dataset for audio events](https://research.google.com/pubs/pub45857.html), ICASSP 2017
 
 Before you can start, you first need to download a VGGish checkpoint file. You can either use a checkpoint provided by ![Google](https://storage.googleapis.com/audioset/vggish_model.ckpt) or ![our](https://s3-eu-west-1.amazonaws.com/jibjib/model/jibjib_model_raw.tgz) very own model that has been additionally trained for more than 100 hours and 60 epochs on a GPU cluster inside a Docker container.
 
@@ -71,11 +74,14 @@ Clone the repo:
 git clone https://github.com/gojibjib/jibjib-model
 ```
 
-Install dependencies:
+Install dependencies, **use python2.7**:
 
 ```
-# Use python2.7
+# CPU training
 pip install -r requirements.txt
+
+# GPU training
+pip install -r requirements-gpu.txt
 ```
 
 Copy all training folders / files into `input/data/`
