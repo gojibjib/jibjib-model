@@ -32,13 +32,13 @@ import time
 
 # Number of epochs
 flags.DEFINE_integer(
-    'num_batches', 20,
+    'num_batches', 60,
     'Number of batches of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
-flags.DEFINE_integer('num_mini_batches', 5, 'Number of Mini batches executed per epoch (batch).')
+flags.DEFINE_integer('num_mini_batches', 1400, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 3, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 145, 'Number of classes to train on')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -352,9 +352,9 @@ def main(_):
 
           summary,_,val_acc,pred,corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test_mini, labels_tensor: y_test_mini},  options=run_options)
           val_acc_entire += val_acc
-          print(y_test_mini)
-          print(pred)
-          print(corr_pred)
+
+        
+
           test_writer.add_summary(summary, step*minibatch_valid_size+j)
 
         average_val_acc= val_acc_entire/(j/minibatch_valid_size)
