@@ -56,6 +56,10 @@ flags.DEFINE_string(
 
 flags.DEFINE_float('test_size', 0.2, 'Size of validation set as chunk of batch')
 
+flags.DEFINE_integer('save_step', 15, 'Defines after how many epochs the model should be saved.')
+
+flags.DEFINE_string('model_version', "1.0", "Defines the model version. Will be used for output files like model ckpt and pickle")
+
 FLAGS = flags.FLAGS
 
 # Folders
@@ -63,28 +67,22 @@ input_dir = os.path.abspath("../input")
 data_dir = os.path.join(input_dir, "data/")
 output_dir = os.path.abspath("../output")
 log_dir = os.path.join(output_dir, "log/")
+log_dir_test = os.path.join(log_dir, "test/")
+log_dir_train = os.path.join(log_dir, "train/")
 model_dir = os.path.join(output_dir, "model/")
-
-# Load pickle into bird_id_map, this dict maps Bird_name -> Database ID
-# bird_id_map = {}
-# bird_id_map_path = os.path.join(input_dir, "bird_id_map.pickle")
 
 # Save train_id_list as pickle, so we can later translate back train IDs/labels (counter) to birds
 train_id_list = []
-train_id_list_path = os.path.join(output_dir, "train_id_list.pickle")
+train_id_list_path = os.path.join(output_dir, "train_id_list-{}.pickle".format(FLAGS.model_version))
 
-# print("Loading {}".format(bird_id_map_path))
-# pickle.HIGHEST_PROTOCOL
-# try:
-#   with open(bird_id_map_path, "rb") as rf:
-#     bird_id_map = pickle.load(rf)
-# except:
-#   print("Unable to load {}".format(bird_id_map_path))
-#   print_exc()
-
-# We need to check how many classes are present
-# _NUM_CLASSES = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
-# FLAGS.num_classes = len([name for name in os.listdir(data_dir) if not os.path.isfile(name) and name != ".empty"])
+def create_dir(path):
+  if not os.path.exists(path):
+    try:
+      print("Creating {}".format(path))
+      os.makedirs(path)
+    except:
+      print("Unable to create {}.".format(path))
+      print_exc()
 
 #load spectrograms into list
 def load_spectrogram(rootDir, log):
@@ -151,6 +149,10 @@ def get_random_batches(full_examples,input_labels):
   return (features, labels)
   
 def main(_):
+  # Create folders, if necessary
+  for p in (output_dir, log_dir, log_dir_test, log_dir_train, model_dir):
+    create_dir(p)
+
   # allow_soft_placement gives fallback GPU, log_device_placement=True displays device info
   with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
     now = datetime.datetime.now().isoformat().replace(":", "_")
@@ -159,7 +161,7 @@ def main(_):
     # TF logger
     tflog = logging.getLogger('tensorflow')
     tflog.setLevel(logging.DEBUG)
-    tflog_fh = logging.FileHandler(os.path.join(log_dir, "{}-tf.log".format(now)))
+    tflog_fh = logging.FileHandler(os.path.join(log_dir, "{}-{}-tf.log".format(FLAGS.model_version, now)))
     tflog_fh.setLevel(logging.DEBUG)
     tflog_fh.setFormatter(fmt)
     tflog_sh = logging.StreamHandler(sys.stdout)
@@ -171,7 +173,7 @@ def main(_):
     # Root logger
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
-    root_fh = logging.FileHandler(os.path.join(log_dir, "{}-run.log".format(now)))
+    root_fh = logging.FileHandler(os.path.join(log_dir, "{}-{}-run.log".format(FLAGS.model_version, now)))
     root_fh.setFormatter(fmt)
     root_fh.setLevel(logging.DEBUG)
     root_sh = logging.StreamHandler(sys.stdout)
@@ -181,12 +183,14 @@ def main(_):
     log.addHandler(root_sh)
 
     start = time.time()
+    log.info("Model version: {}".format(FLAGS.model_version))
     log.info("Number of epochs: {}".format(FLAGS.num_batches))
     log.info("Number of classes: {}".format(FLAGS.num_classes))
     log.info("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
     log.info("Validation enabled: {}".format(FLAGS.validation))
     log.info("Size of Validation set: {}".format(FLAGS.test_size))
     log.info("Multi GPU flag set: {}".format(FLAGS.gpu_enabled))
+    log.info("Saving model after each {} step".format(FLAGS.save_step))
 
     run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
 
@@ -196,8 +200,6 @@ def main(_):
     # Define a shallow classification model and associated training ops on top
     # of VGGish.
     with tf.variable_scope('mymodel'):
-
-
       # Add a fully connected layer with 100 units.
       num_units = 100
       fc = slim.fully_connected(embeddings, num_units)
@@ -276,10 +278,8 @@ def main(_):
     summary_op = tf.summary.merge_all()
 
     # TensorBoard stuff
-    train_writer = tf.summary.FileWriter(os.path.join(log_dir, "train/"),
-                                      sess.graph)
-    test_writer = tf.summary.FileWriter(os.path.join(log_dir, "test/"),
-                                      sess.graph)
+    train_writer = tf.summary.FileWriter(log_dir_train, sess.graph)
+    test_writer = tf.summary.FileWriter(log_dir_test, sess.graph)
     
     tf.global_variables_initializer().run()
 
@@ -362,8 +362,8 @@ def main(_):
 
       # Save model to disk.
       saver = tf.train.Saver()
-      if step % 15 == 0:
-        save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model.ckpt"),global_step=step)
+      if step % FLAGS.save_step == 0:
+        save_path = saver.save(sess, os.path.join(model_dir, "jibjib_model-{}.ckpt".format(FLAGS.model_version)),global_step=step)
         log.info("Model saved to %s" % save_path)
 
     now = datetime.datetime.now().isoformat().replace(":", "_").split(".")[0]
