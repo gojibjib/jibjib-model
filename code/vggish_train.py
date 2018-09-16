@@ -358,7 +358,7 @@ def main(_):
           test_writer.add_summary(summary, step*minibatch_valid_size+j)
 
         average_val_acc= val_acc_entire/(j/minibatch_valid_size)
-        log.info("Validation Accuracy: {}".format(average_val_acc))
+        log.info("Epoch {} - Validation Accuracy: {}".format(step+1, average_val_acc))
 
       # Save model to disk.
       saver = tf.train.Saver()
