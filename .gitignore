@@ -2,6 +2,7 @@
 *.wav
 *.local
 *.ckpt*
+py2env
 venv2/
 venv3/
 *.pickle
