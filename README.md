@@ -121,3 +121,5 @@ Start training:
 cd code
 python ./vggish_train.py
 ```
+
+You can then use `modelbuilder.py` to convert the model to protocol buffer.
