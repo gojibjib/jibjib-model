@@ -1,13 +1,14 @@
+#!/usr/bin/env python
 import tensorflow as tf
 import os, sys
 from traceback import print_exc
 
 FEATURE_TENSOR = "vggish/input_features:0"
 LOGITS = "mymodel/prediction:0"
-SAVE_PATH = './save'
+SAVE_TO = 'serve'
+VERSION = '1'
 MODEL_NAME = 'jibjib_model'
-VERSION = 1
-SERVE_PATH = './serve/{}/{}'.format(MODEL_NAME, VERSION)
+SAVE_PATH = os.path.abspath(os.path.join(os.getcwd(), SAVE_TO, MODEL_NAME, VERSION))
 
 loaded_graph = tf.Graph()
 
@@ -29,24 +30,16 @@ def create_parser():
 		type=str,
 		default=LOGITS)
 	parser.add_argument('--save_path',
-		help='The path to save the serialized model to. Will create on absence. Default: {}'.format(SAVE_PATH),
-		type=str,
-		default=SAVE_PATH)
-	parser.add_argument('--model_name',
-		help='The name of the model. Default: {}'.format(MODEL_NAME),
-		type=str,
-		default=MODEL_NAME)
+		help='The path to save the serialized model to. Will create on absence. Schema: ./<save_path>/<model_version/<model_name> . Default: {} => {}'.format(SAVE_TO, SAVE_PATH),
+		type=str)
 	parser.add_argument('--model_version',
 		help='The model version. Default: {}'.format(VERSION),
-		type=str,
-		default=VERSION)
-	parser.add_argument('--serve_path',
-		help='The path where the model will be served from. Default: {}'.format(SERVE_PATH),
-		type=str,
-		default=SERVE_PATH)
+		type=str)
+	parser.add_argument('--model_name',
+		help='The name of the model. Default: {}'.format(MODEL_NAME),
+		type=str)
 
 	return parser
-
 
 args = create_parser().parse_args()
 with tf.Session(graph = loaded_graph) as sess:
@@ -64,22 +57,45 @@ with tf.Session(graph = loaded_graph) as sess:
 		print_exc()
 		sys.exit(1)
 
-	features_tensor= loaded_graph.get_tensor_by_name(args.features_tensor)
-	logits= loaded_graph.get_tensor_by_name(args.logits)
-
-
-	# create tensors info
+	features_tensor = loaded_graph.get_tensor_by_name(args.features_tensor)
 	model_input = tf.saved_model.utils.build_tensor_info(features_tensor)
+	
+	logits = loaded_graph.get_tensor_by_name(args.logits)
 	model_output = tf.saved_model.utils.build_tensor_info(logits)
 
 	# build signature definition
 	signature_definition = tf.saved_model.signature_def_utils.build_signature_def(
-	inputs={'inputs': model_input},
-	outputs={'outputs': model_output},
-	method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
+		inputs={'inputs': model_input},
+		outputs={'outputs': model_output},
+		method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
 
+	# Construct save path
+	out_path = os.getcwd()
+	if args.save_path or args.model_version or args.model_name:
+		if args.save_path:
+			out_path = os.path.join(out_path, args.save_path)
+		else:
+			out_path = os.path.join(out_path, SAVE_TO)
+		
+		if args.model_name:
+			out_path = os.path.join(out_path, args.model_name)
+		else:
+			out_path = os.path.join(out_path, MODEL_NAME)
+		
+		if args.model_version:
+			out_path =  os.path.join(out_path, args.model_version)
+		else:
+			out_path = os.path.join(out_path, VERSION)
+		
+	else:
+		out_path = SAVE_PATH
 
-	builder = tf.saved_model.builder.SavedModelBuilder(args.serve_path)
+	try:
+		builder = tf.saved_model.builder.SavedModelBuilder(out_path)
+	except:
+		print("Unable to create SavedModelBuilder")
+		print_exc()
+		sys.exit(1)
 
 	builder.add_meta_graph_and_variables(
 		sess, [tf.saved_model.tag_constants.SERVING],
@@ -88,5 +104,4 @@ with tf.Session(graph = loaded_graph) as sess:
 				signature_definition
 		})
 
-	# Save the model so we can serve it with a model server :)
 	builder.save()
