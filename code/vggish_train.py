@@ -57,7 +57,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_float('test_size', 0.2, 'Size of validation set as chunk of batch')
 
-flags.DEFINE_integer('save_step', 5, 'Defines after how many epochs the model should be saved.')
+flags.DEFINE_integer('save_step', 4, 'Defines _after_ how many epochs the model should be saved.')
 
 flags.DEFINE_string('model_version', "1.0", "Defines the model version. Will be used for output files like model ckpt and pickle")
 
@@ -262,7 +262,7 @@ def main(_):
     log.info("Number of Mini batches: {}".format(FLAGS.num_mini_batches))
     log.info("Validation enabled: {}".format(FLAGS.validation))
     log.info("Size of Validation set: {}".format(FLAGS.test_size))
-    log.info("Saving model after each {} step".format(FLAGS.save_step))
+    log.info("Saving model after every {}th step".format(FLAGS.save_step))
 
     run_options = tf.RunOptions(report_tensor_allocations_upon_oom=True)
 
