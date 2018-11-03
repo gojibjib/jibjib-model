@@ -1,5 +1,5 @@
-#audio file splitter
-#audio file augmentation
+#!/usr/bin/env python3
+# audio_splitter.py - Split .wav audio files into 9s parts
 
 from pydub import AudioSegment
 import os 

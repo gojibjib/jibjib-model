@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# modelbuilder.py - Exports a TensorFlow model in protocol buffer format
+
 import tensorflow as tf
 import os, sys
 from traceback import print_exc
