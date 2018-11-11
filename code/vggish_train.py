@@ -35,13 +35,13 @@ flags.DEFINE_boolean(
     'Sets log level to debug. Default: false (defaults to log level info)')
 
 flags.DEFINE_integer(
-    'num_batches', 60,
+    'num_batches', 5,
     'Number of batches (epochs) of examples to feed into the model. Each batch is of '
     'variable size and contains shuffled examples of each class of audio.')
 
-flags.DEFINE_integer('num_mini_batches', 1400, 'Number of Mini batches executed per epoch (batch).')
+flags.DEFINE_integer('num_mini_batches', 5, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 145, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 3, 'Number of classes to train on')
 
 flags.DEFINE_boolean(
     'train_vggish', True,
@@ -156,7 +156,7 @@ def load_spectrogram(rootDir, log):
 
           log.debug("Signal example shape of {}: {}".format(fname, signal_example.shape))
 
-          # Initialize one-hot encoder 
+          # Build own one-hot encoder 
           encoded = np.zeros((FLAGS.num_classes))
           encoded[counter]=1
           encoded=encoded.tolist()
@@ -286,6 +286,7 @@ def main(_):
 
       # Add training ops.
       with tf.variable_scope('train'):
+        
         global_step = tf.Variable(
             0, name='global_step', trainable=False,
             collections=[tf.GraphKeys.GLOBAL_VARIABLES,
@@ -293,6 +294,11 @@ def main(_):
 
         # Labels are assumed to be fed as a batch multi-hot vectors, with
         # a 1 in the position of each positive class label, and 0 elsewhere.
+        """
+        Accipiter_gentilis  --> [1, 0, 0]  
+        Cygnus_olor         --> [0, 1, 0] 
+        Regulus_regulus     --> [0, 0, 1]
+        """
         labels = tf.placeholder(
             tf.float32, shape=(None,FLAGS.num_classes), name='labels')
       
@@ -300,7 +306,6 @@ def main(_):
         xent = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=logits, labels=labels, name='xent')
         loss = tf.reduce_mean(xent, name='loss_op')
-          
         tf.summary.scalar('loss', loss)
 
         # We use the same optimizer and hyperparameters as used to train VGGish.    
@@ -325,9 +330,9 @@ def main(_):
 
     # TensorBoard stuff
     train_writer = tf.summary.FileWriter(log_dir_train, sess.graph)
-    test_writer = tf.summary.FileWriter(log_dir_test, sess.graph)
+    validation_writer = tf.summary.FileWriter(log_dir_test, sess.graph)
     
-    tf.global_variables_initializer().run()
+    #tf.global_variables_initializer().run()
 
     # Initialize all variables in the model, and then load the pre-trained
     # VGGish checkpoint.
@@ -341,16 +346,17 @@ def main(_):
     global_step_tensor = sess.graph.get_tensor_by_name('mymodel/train/global_step:0')
     loss_tensor = sess.graph.get_tensor_by_name('mymodel/train/loss_op:0')
     train_op = sess.graph.get_operation_by_name('mymodel/train/train_op')
+
   
     # Load all input with corresponding labels
     log.info("Loading data set and mapping birds to training IDs...")
     all_examples, all_labels = load_spectrogram(os.path.join(data_dir), log)
     
     # Create training and test sets
-    X_train_entire, X_test_entire, y_train_entire, y_test_entire = sk.train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
+    X_train_entire, X_validation_entire, y_train_entire, y_validation_entire = sk.train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
 
     # Test set stays the same throughout all epochs
-    (X_test, y_test) = get_random_batches(X_test_entire, y_test_entire, log)
+    (X_validation, y_validation) = get_random_batches(X_validation_entire, y_validation_entire, log)
 
     # Start training
     for step in range(FLAGS.num_batches):
@@ -377,7 +383,9 @@ def main(_):
         log.info("Size of mini batch (features): {}".format(len(X_train_mini)))
         log.info("Size of mini batch (labels): {}".format(len(y_train_mini)))
         
+        # Actual execution of the graph
         [summary,num_steps, loss,_, train_acc,temp] = sess.run([summary_op,global_step_tensor, loss_tensor, train_op,accuracy,prediction],feed_dict={features_tensor: X_train_mini, labels_tensor: y_train_mini}, options=run_options)
+        
         train_writer.add_summary(summary, step*minibatch_size+i)
         log.info("Loss in minibatch: {} ".format(loss))
         log.info("Training accuracy in minibatch: {}".format(train_acc))
@@ -386,20 +394,20 @@ def main(_):
         counter += 1
 
         # Test set mini batching
-        minibatch_valid_size = 20
+        minibatch_valid_size = 4
         val_acc_entire = 0.
-        for j in range(0, len(X_test), minibatch_valid_size):
-          X_test_mini = X_test[j:j + minibatch_valid_size]
-          y_test_mini = y_test[j:j + minibatch_valid_size]
+        for j in range(0, len(X_validation), minibatch_valid_size):
+          X_validation_mini = X_validation[j:j + minibatch_valid_size]
+          y_validation_mini = y_validation[j:j + minibatch_valid_size]
 
-          summary,_,val_acc,pred,corr_pred = sess.run([summary_op,loss_tensor,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_test_mini, labels_tensor: y_test_mini},  options=run_options)
+          summary,val_acc,pred,corr_pred = sess.run([summary_op,accuracy,prediction,correct_prediction], feed_dict={features_tensor: X_validation_mini, labels_tensor: y_validation_mini},  options=run_options)
           val_acc_entire += val_acc
 
-          test_writer.add_summary(summary, step*minibatch_valid_size+j)
+          validation_writer.add_summary(summary, step*minibatch_valid_size+j)
 
         average_val_acc= val_acc_entire/(j/minibatch_valid_size)
         log.info("Epoch {} -- Validation Accuracy: {}".format(step+1, average_val_acc))
-
+        log.debug("Correct prediction: {}".format(corr_pred))
       # Save model to disk.
       saver = tf.train.Saver()
       if step % FLAGS.save_step == 0:
