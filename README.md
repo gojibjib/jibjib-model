@@ -36,7 +36,7 @@ After, VGGish's convolutional filters run over each spectrogram and extract mean
 
 After every epoch a snapshot of the models weights and biases is saved on disk. In the next step we can restore the model to either do a query or continue with training.
 
-We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model. 
+We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model.
 
 ## Training
 
@@ -80,6 +80,16 @@ docker container run --rm -d \
     -v $(pwd)/input:/model/input \
     -v $(pwd)/output:/model/output \
     obitech/jibjib-model:latest-gpu
+```
+
+For quickly starting training run:
+
+```
+# GPU
+./train_docker.sh
+
+# CPU
+./train_docker.sh
 ```
 
 ### Locally

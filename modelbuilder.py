@@ -21,7 +21,7 @@ def create_parser():
 
 	parser = argparse.ArgumentParser(description=arg_desc)
 	parser.add_argument('checkpoint',
-		help='The full path to the checkpoint ckpt file and meta file. Example: output/mymodel.ckpt-10 will use the files output/mymodel.ckpt-10 and output/mymodel.ckpt-10.meta',
+		help='The full path to the checkpoint ckpt file and meta file. Example: output/model/mymodel.ckpt-10 will use the files output/model/mymodel.ckpt-10 and output/mymodel.ckpt-10.meta',
 		type=str)
 	parser.add_argument('--features_tensor',
 		help='The name of the features Tensor. Default: {}'.format(FEATURE_TENSOR),
@@ -107,3 +107,4 @@ with tf.Session(graph = loaded_graph) as sess:
 		})
 
 	builder.save()
+	print("Model saved under {}".format(out_path))
