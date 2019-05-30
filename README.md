@@ -45,11 +45,11 @@ We are deploying the model by enabling TensorFlow Serving to reduce response tim
 Get the container:
 
 ```
-# GPU
-docker pull obitech/jibjib-model:gpu-latest
+# GPU, needs nvidia-docker installed
+docker pull obitech/jibjib-model:latest-gpu
 
-# CPU, needs nvidia-docker installed
-docker pull obitech/jibjib-model:cpu-latest
+# CPU
+docker pull obitech/jibjib-model:latest-cpu
 ```
 
 Create folders, if necessary:
