@@ -79,7 +79,7 @@ docker container run --rm -d \
     --runtime=nvidia \
     -v $(pwd)/input:/model/input \
     -v $(pwd)/output:/model/output \
-    obitech/jibjib-model:gpu-latest
+    obitech/jibjib-model:latest-gpu
 ```
 
 ### Locally
