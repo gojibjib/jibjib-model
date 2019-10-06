@@ -16,7 +16,8 @@ The complete list of JibJib repos is:
 
 ## Overview
 
-In vggish_train.py we are training a  classifier model for 195 bird classes. We take a pretrained [VGGish/ Audioset](https://github.com/tensorflow/models/tree/master/research/audioset) model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. Please read the following papers for more information:
+# CNN
+In vggish_train.py we are training a convolutional classifier model for an arbitrary number of birds. We take a pretrained [VGGish/ Audioset](https://github.com/tensorflow/models/tree/master/research/audioset) model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. Please read the following papers for more information:
 
 - Hershey, S. et. al., [CNN Architectures for Large-Scale Audio Classification](https://research.google.com/pubs/pub45611.html), ICASSP 2017
 - Gemmeke, J. et. al., [AudioSet: An ontology and human-labelled dataset for audio events](https://research.google.com/pubs/pub45857.html), ICASSP 2017
@@ -37,6 +38,10 @@ After, VGGish's convolutional filters run over each spectrogram and extract mean
 After every epoch a snapshot of the models weights and biases is saved on disk. In the next step we can restore the model to either do a query or continue with training.
 
 We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model.
+
+# New: Convolutional LSTM
+In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs a classification tasks on the the mel spectrograms. In contrast to the former script, it does not perform a classification for each spectrogram but analyzes a sequence of matrices and then performs a classification on the entire sequence. C-LSTMs may outperform CNNs when data only contains sparse specific features that don't occure in every timestep.
+
 
 ## Training
 
