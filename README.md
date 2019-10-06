@@ -40,7 +40,7 @@ After every epoch a snapshot of the models weights and biases is saved on disk. 
 We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model.
 
 ### New: Convolutional LSTM for Sequence Classification
-In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs classification tasks on mel spectrograms. In contrast to vggish_train.py, it does not perform a classification for each spectrogram but analyzes aan array of these matrices and then performs a classification on the entire sequence. C-LSTMs may outperform CNNs when data only contains sparse specific features that don't occure in every timestep.
+In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs classification tasks on mel spectrograms. In contrast to vggish_train.py, it does not perform a classification for each spectrogram but analyzes array of matrices and then performs a classification on the entire sequence. C-LSTMs may outperform CNNs when data only contains sparse specific features that don't occure in every timestep.
 
 
 ## Training
