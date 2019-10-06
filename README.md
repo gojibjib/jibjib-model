@@ -16,7 +16,7 @@ The complete list of JibJib repos is:
 
 ## Overview
 
-# CNN
+# CNN for Spectrogram-wise Classification
 In vggish_train.py we are training a convolutional classifier model for an arbitrary number of birds. We take a pretrained [VGGish/ Audioset](https://github.com/tensorflow/models/tree/master/research/audioset) model by Google and finetune it by letting it iterate during training on more than 80,000 audio samples of 10 second length. Please read the following papers for more information:
 
 - Hershey, S. et. al., [CNN Architectures for Large-Scale Audio Classification](https://research.google.com/pubs/pub45611.html), ICASSP 2017
@@ -39,7 +39,7 @@ After every epoch a snapshot of the models weights and biases is saved on disk. 
 
 We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model.
 
-# New: Convolutional LSTM for Sequence Analysis
+# New: Convolutional LSTM for Sequence Classification
 In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs classification tasks on mel spectrograms. In contrast to vggish_train.py, it does not perform a classification for each spectrogram but analyzes aan array of these matrices and then performs a classification on the entire sequence. C-LSTMs may outperform CNNs when data only contains sparse specific features that don't occure in every timestep.
 
 
