@@ -35,14 +35,9 @@ flags.DEFINE_boolean(
     'debug', False,
     'Sets log level to debug. Default: false (defaults to log level info)')
 
-flags.DEFINE_integer(
-    'num_batches', 6,
-    'Number of batches (epochs) of examples to feed into the model. Each batch is of '
-    'variable size and contains shuffled examples of each class of audio.')
-
 flags.DEFINE_integer('minibatch_size', 16, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 5, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 6, 'Number of classes to train on')
 
 flags.DEFINE_integer('sample_length', 10, 'Length of sample')
 
@@ -238,7 +233,7 @@ def LSTM_Model(X):
 
   layer = BatchNormalization(momentum=0.9)(layer)
   layer = Activation('relu')(layer)
-  layer = MaxPo oling2D(2)(layer)
+  layer = MaxPooling2D(2)(layer)
   layer = Dropout(0.4)(layer)   
   #bring back the reshape, lstm, and dropout
   layer = Reshape(( int(layer.shape[1]), int(layer.shape[2]) * int(layer.shape[3])))(layer)
