@@ -35,14 +35,9 @@ flags.DEFINE_boolean(
     'debug', False,
     'Sets log level to debug. Default: false (defaults to log level info)')
 
-flags.DEFINE_integer(
-    'num_batches', 5,
-    'Number of batches (epochs) of examples to feed into the model. Each batch is of '
-    'variable size and contains shuffled examples of each class of audio.')
-
 flags.DEFINE_integer('minibatch_size', 16, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 4, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 6, 'Number of classes to train on')
 
 flags.DEFINE_integer('sample_length', 10, 'Length of sample')
 
@@ -97,19 +92,12 @@ def create_dir(path):
       print("Unable to create {}.".format(path))
       print_exc()
 
-def signaltonoise(a, axis=0, ddof=0):
-    a = np.asanyarray(a)
-    m = a.mean(axis)
-    sd = a.std(axis=axis, ddof=ddof)
-    return np.where(sd == 0, 0, m/sd)
-
-
 
 def show_summary_stats(history):
     # List all data in history
     print(history.history.keys())
 
-    # Summarize history for accuracy
+    #First image: Acc during training on X_train and X_test
     plt.plot(history.history['acc'])
     plt.plot(history.history['val_acc'])
     plt.title('model accuracy')
@@ -118,7 +106,7 @@ def show_summary_stats(history):
     plt.legend(['train', 'test'], loc='upper left')
     plt.show()
 
-    # Summarize history for loss
+    #Second image: Training and test loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.title('model loss')
@@ -215,8 +203,6 @@ def load_spectrogram(rootDir):
   return np.array(input_examples), np.array(input_labels)
 
 
-#TODO build generator 
-
 def LSTM_Model(X):
   
 
@@ -238,19 +224,17 @@ def LSTM_Model(X):
   N_DENSE = 3
 
 
-  #broken for i greater than 1
-  for i in range(N_LAYERS):
-    layer = Conv2D(
-        filters=CONV_FILTER_COUNT,
-        kernel_size=FILTER_LENGTH,
-        kernel_regularizer=regularizers.l2(L2_regularization),  
-        name='conv_{}'.format(i)
-        )(layer)
+  layer = Conv2D(
+      filters=CONV_FILTER_COUNT,
+      kernel_size=FILTER_LENGTH,
+      kernel_regularizer=regularizers.l2(L2_regularization),  
+      name='conv_{}'.format(i)
+      )(layer)
 
-    layer = BatchNormalization(momentum=0.9)(layer)
-    layer = Activation('relu')(layer)
-    layer = MaxPooling2D(2)(layer)
-    layer = Dropout(0.4)(layer)   
+  layer = BatchNormalization(momentum=0.9)(layer)
+  layer = Activation('relu')(layer)
+  layer = MaxPooling2D(2)(layer)
+  layer = Dropout(0.4)(layer)   
   #bring back the reshape, lstm, and dropout
   layer = Reshape(( int(layer.shape[1]), int(layer.shape[2]) * int(layer.shape[3])))(layer)
   layer = LSTM(LSTM_COUNT, return_sequences=False)(layer)
@@ -284,31 +268,16 @@ def LSTM_Model(X):
   return model
 
 
-def generator(batch_size,from_list_x,from_list_y):
-
-    assert len(from_list_x) == len(from_list_y)
-    total_size = len(from_list_x)
-
-    while True:
-        for i in range(0,total_size,batch_size):
-            print(from_list_x[i:i+batch_size])
-            yield np.array(from_list_x[i:i+batch_size]), np.array(from_list_y[i:i+batch_size])
-
-
 if __name__ == '__main__':
 
   print("Start")
+  print("Loading all examples with corresponding labels...")
   all_examples, all_labels = load_spectrogram(os.path.join(data_dir))
-  print("Loaded all examples with all labels...")
-  #split into training and test set
-  # Create training and test sets
+  print("Splitting dataset into training test...")
   X_train_entire, X_validation_entire, y_train_entire, y_validation_entire = train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
-  #X_train_entire = np.array(X_train_entire)
-  #X_train_entire = np.array(X_train_entire)
-  #X_validation_entire = np.array(X_validation_entire)
+  print("Creating Recurrent LSTM model...")
   lstm_model = LSTM_Model(X_train_entire)
-
-  #TODOmake parameters flags
+  print("Fitting model...")
   history = lstm_model.fit(X_train_entire, y_train_entire, validation_data = (X_validation_entire, y_validation_entire), batch_size=FLAGS.minibatch_size,epochs=FLAGS.epochs,verbose=1,shuffle=True)
-  print('model trained')
-  show_summary_stats(history)  
+  print('Displaying training statistics')
+  show_summary_stats(history)
