@@ -37,7 +37,7 @@ flags.DEFINE_boolean(
 
 flags.DEFINE_integer('minibatch_size', 16, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 6, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 7, 'Number of classes to train on')
 
 flags.DEFINE_integer('sample_length', 10, 'Length of sample')
 
@@ -213,10 +213,7 @@ def LSTM_Model(X):
 
 
 
-  N_LAYERS = 1
-  #try 3, then 4 for filter length
   FILTER_LENGTH = 2
-  #TODO get values from vggish.params
   CONV_FILTER_COUNT = 56  
   LSTM_COUNT = 96
   NUM_HIDDEN = 64
@@ -228,7 +225,7 @@ def LSTM_Model(X):
       filters=CONV_FILTER_COUNT,
       kernel_size=FILTER_LENGTH,
       kernel_regularizer=regularizers.l2(L2_regularization),  
-      name='conv_{}'.format(i)
+      name='conv_{}'.format(0)
       )(layer)
 
   layer = BatchNormalization(momentum=0.9)(layer)
