@@ -311,4 +311,4 @@ if __name__ == '__main__':
   #TODOmake parameters flags
   history = lstm_model.fit(X_train_entire, y_train_entire, validation_data = (X_validation_entire, y_validation_entire), batch_size=FLAGS.minibatch_size,epochs=FLAGS.epochs,verbose=1,shuffle=True)
   print('model trained')
-  show_summary_stats(history)
+  show_summary_stats(history)  
