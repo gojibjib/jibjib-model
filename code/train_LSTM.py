@@ -34,7 +34,7 @@ flags.DEFINE_boolean(
 
 flags.DEFINE_integer('minibatch_size', 16, 'Number of Mini batches executed per epoch (batch).')
 
-flags.DEFINE_integer('num_classes', 10, 'Number of classes to train on')
+flags.DEFINE_integer('num_classes', 7, 'Number of classes to train on')
 
 flags.DEFINE_integer('sample_length', 10, 'Length of sample')
 
