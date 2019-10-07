@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # train_LSTM.py - Train a Recurrent Convolutional Network to recognize bird voices 
 
-#TODO input_shape only 10 seconds
-
-
 import tensorflow as tf
 import keras 
 from keras import Sequential
@@ -205,7 +202,7 @@ def load_spectrogram(rootDir):
 
 def LSTM_Model():
   
-  #Setting input shape dynamically, taking values from vggish_params
+  # Setting input shape dynamically, taking values from vggish_params
   input_shape = (FLAGS.sample_length, vggish_params.NUM_FRAMES, vggish_params.NUM_BANDS)
   model_input = Input(input_shape, name='input')
 
@@ -233,7 +230,7 @@ def LSTM_Model():
   layer = LSTM(LSTM_COUNT, return_sequences=False)(layer)
   layer = Dropout(0.4)(layer)
 
-  #Dense Layers
+  # Dense Layers
   for i in range(N_DENSE):
     layer = Dense(NUM_HIDDEN, 
       kernel_regularizer=regularizers.l2(L2_regularization), 
