@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # train_LSTM.py - Train a Recurrent Convolutional Network to recognize bird voices 
 
+#TODO input_shape only 10 seconds
+
+
 import tensorflow as tf
 import keras 
 from keras import Sequential
@@ -21,7 +24,7 @@ import vggish_params
 import matplotlib.pyplot as plt
 
 import scipy
-import vggish_params
+
 import datetime
 
 flags = tf.app.flags
@@ -188,8 +191,8 @@ def load_spectrogram(rootDir):
           else:
             print("Skipping {}, unable extract clean signal label".format(fname))
             continue
+
     counter +=1
-  
   try:
     with open(output_dir, "wb") as wf:
       pickle.dump(train_id_list, wf)
@@ -200,13 +203,15 @@ def load_spectrogram(rootDir):
   return np.array(input_examples), np.array(input_labels)
 
 
-def LSTM_Model():
+def LSTM_Model(X):
   
-  # Setting input shape dynamically, taking values from vggish_params
-  input_shape = (FLAGS.sample_length, vggish_params.NUM_FRAMES, vggish_params.NUM_BANDS)
+
+  input_shape = (X[0].shape[0], X[0].shape[1], X[0].shape[2])
   model_input = Input(input_shape, name='input')
 
   layer =  model_input
+
+
 
   FILTER_LENGTH = 2
   CONV_FILTER_COUNT = 56  
@@ -214,6 +219,7 @@ def LSTM_Model():
   NUM_HIDDEN = 64
   L2_regularization = 0.001
   N_DENSE = 3
+
 
   layer = Conv2D(
       filters=CONV_FILTER_COUNT,
@@ -226,23 +232,28 @@ def LSTM_Model():
   layer = Activation('relu')(layer)
   layer = MaxPooling2D(2)(layer)
   layer = Dropout(0.4)(layer)   
+  #bring back the reshape, lstm, and dropout
   layer = Reshape(( int(layer.shape[1]), int(layer.shape[2]) * int(layer.shape[3])))(layer)
   layer = LSTM(LSTM_COUNT, return_sequences=False)(layer)
   layer = Dropout(0.4)(layer)
 
-  # Dense Layers
+
+
+  # N_DENSE Dense Layers
   for i in range(N_DENSE):
     layer = Dense(NUM_HIDDEN, 
       kernel_regularizer=regularizers.l2(L2_regularization), 
-      name='dense{}'.format(i))(layer)
+      name='dense' + str(i+1))(layer)
+    #investing dropout size...
   layer = Dropout(0.1)(layer)
 
-  # FC Output
+  ## Softmax Output
   layer = Dense(FLAGS.num_classes)(layer)
   layer = Activation('softmax', name='output_realtime')(layer)
   model_output = layer
   model = Model(model_input, model_output)
-  
+    
+    
   opt = Adam(lr=0.001)
   model.compile(
           loss='categorical_crossentropy',
@@ -262,9 +273,8 @@ if __name__ == '__main__':
   print("Splitting dataset into training test...")
   X_train_entire, X_validation_entire, y_train_entire, y_validation_entire = train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
   print("Creating Recurrent LSTM model...")
-  lstm_model = LSTM_Model()
+  lstm_model = LSTM_Model(X_train_entire)
   print("Fitting model...")
-  #TODO loading all data too hard on memory, need to implement generators to save memory
   history = lstm_model.fit(X_train_entire, y_train_entire, validation_data = (X_validation_entire, y_validation_entire), batch_size=FLAGS.minibatch_size,epochs=FLAGS.epochs,verbose=1,shuffle=True)
   print('Displaying training statistics')
   show_summary_stats(history)
