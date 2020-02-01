@@ -40,7 +40,8 @@ After every epoch a snapshot of the models weights and biases is saved on disk. 
 We are deploying the model by enabling TensorFlow Serving to reduce response time drastically. Check out ![jibjib-query](https://github.com/gojibjib/jibjib-query) to learn more about how we implemented TensorFlow Serving for our model.
 
 ### New: Convolutional LSTM for Sequence Classification
-In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs classification tasks on mel spectrograms. In contrast to vggish_train.py, it does not perform a classification for each spectrogram but analyzes array of matrices and then performs a single classification on the entire sequence. C-LSTMs may outperform CNNs when data only contains sparse specific features that don't occure in every timestep.
+In train_LSTM.py we provide a Convolutional LSTM for audio event recognition. Similar to vggish_train.py it performs classification tasks on mel spectrograms. In contrast to vggish_train.py, it does not perform a classification for each spectrogram but analyzes an array of matrices and then performs a single classification on the entire sequence. C-LSTMs may outperform traditional CNNs when data only contains sparse specific features or when audio scenes are event-rich with many overlapping signals.
+The script train_LSTM.py uses the same input function as in vggish_train.py converting .wav files into their audio footprint using mel-frequency cepstral coeeficients, separating each file into 1 second frame where each frame is made up of mel features. Simultaneously, the corresponding labels are extracted, one-hot-encoded and shown to our model further downstream at the fully connected layer. The script uses Keras as a TensorFlow wrapper to build the model and is compatible with Python3.6 or upwards.
 
 
 ## Training
@@ -105,7 +106,7 @@ Clone the repo:
 git clone https://github.com/gojibjib/jibjib-model
 ```
 
-Install dependencies, **use python2.7**:
+Install dependencies, **use python3.6 or upwards**:
 
 ```
 # CPU training
