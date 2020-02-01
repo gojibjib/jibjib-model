@@ -19,6 +19,7 @@ import vggish_params
 from sklearn.model_selection import train_test_split
 import vggish_params
 import matplotlib.pyplot as plt
+from keras.utils import plot_model
 
 import scipy
 import vggish_params
@@ -37,10 +38,6 @@ flags.DEFINE_integer('minibatch_size', 16, 'Number of Mini batches executed per 
 flags.DEFINE_integer('num_classes', 7, 'Number of classes to train on')
 
 flags.DEFINE_integer('sample_length', 10, 'Length of sample')
-
-flags.DEFINE_string(
-    'checkpoint', '../input/crnn.h5',
-    'Path to the VGGish checkpoint file.')
 
 flags.DEFINE_float('test_size', 0.2, 'Size of test set as chunk of batch')
 
@@ -89,6 +86,15 @@ def create_dir(path):
       print("Unable to create {}.".format(path))
       print_exc()
 
+import keras
+import pydot as pyd
+from IPython.display import SVG
+from keras.utils.vis_utils import model_to_dot
+
+keras.utils.vis_utils.pydot = pyd
+
+def visualize_model(model):
+  return SVG(model_to_dot(model).create(prog='dot', format='svg'))
 
 def show_summary_stats(history):
     # List all data in history
@@ -199,8 +205,16 @@ def load_spectrogram(rootDir):
   print("Input examples created: {}, Labels created: {}".format(len(input_examples), len(input_labels)))
   return np.array(input_examples), np.array(input_labels)
 
+def save_model(model):
+  json_model = model.to_json()
+  # Serialize model as JSON
+  with open("../output/model/model.json", "w") as json_file:
+    json_file.write(json_model)
+  
+  # Serialize weights to HDF5
+  model.save_weights("../output/model/model.h5")
 
-def LSTM_Model():
+def LSTM_model():
   
   # Setting input shape dynamically, taking values from vggish_params
   input_shape = (FLAGS.sample_length, vggish_params.NUM_FRAMES, vggish_params.NUM_BANDS)
@@ -251,6 +265,7 @@ def LSTM_Model():
       )
     
   print(model.summary())
+  #visualize_model(model)
   return model
 
 
@@ -262,9 +277,15 @@ if __name__ == '__main__':
   print("Splitting dataset into training test...")
   X_train_entire, X_validation_entire, y_train_entire, y_validation_entire = train_test_split(all_examples, all_labels, test_size=FLAGS.test_size)
   print("Creating Recurrent LSTM model...")
-  lstm_model = LSTM_Model()
+  lstm_model = LSTM_model()
   print("Fitting model...")
   #TODO loading all data too hard on memory, need to implement generators to save memory
+  print('X_train_entire is shape {}'.format(X_train_entire.shape))
   history = lstm_model.fit(X_train_entire, y_train_entire, validation_data = (X_validation_entire, y_validation_entire), batch_size=FLAGS.minibatch_size,epochs=FLAGS.epochs,verbose=1,shuffle=True)
+  
+  print("Saving model...")
+  save_model(lstm_model)
+  print("Model saved.")
+
   print('Displaying training statistics')
   show_summary_stats(history)
